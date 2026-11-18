@@ -69,4 +69,5 @@ The full workflow is in [CONTRIBUTING.md](CONTRIBUTING.md#how-we-work). The part
 - Write a comment only when the reason is not clear from the code: a hidden constraint, an invariant, a workaround. Do not describe what the code does.
 - Commit messages in English, imperative subject, the reason in the body. Keep commits small.
 - The person who asked for the change is the commit author. Do not set an AI agent or bot as author or committer, and do not add `Co-authored-by` lines for one.
+- Commit whenever the tree is stable: tests, lint and the generated-file checks pass for the change just made, even without being asked. Never push on your own; pushing waits for an explicit user instruction.
 - User-facing text in the plugin is English. Keep the README and README.zh.md in step when you change one of them.
