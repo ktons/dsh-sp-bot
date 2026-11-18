@@ -1,6 +1,8 @@
 # AGENTS.md
 
-Instructions for AI coding agents that work on this repository. Human contributors: see [CONTRIBUTING.md](CONTRIBUTING.md), which has the same rules with more detail.
+Instructions for AI coding agents that work on this repository.
+
+This is an independently developed fork of `Fei2411/DS-Bot` (remote `origin`, kept for reading upstream history). All development happens here; work is pushed to the fork remote `spbot` (`ktons/dsh-sp-bot`) only on an explicit user instruction. `CONTRIBUTING.md` describes the upstream project's process and is kept for reference only; the rules in this file are what agents follow.
 
 ## What this project is
 
@@ -40,28 +42,29 @@ CONTEXT_WINDOW=100000 CHECK_RATIO=0.45 dev/bench.sh smoke 3096 8796 reset && nod
 dev/bench.sh smoke 3096 8796 stop
 ```
 
-A change is done when `npm test`, the `--check` and `npm run lint` pass; CI runs them on every pull request. Run the smoke test as well for changes to `index.js` or `src/host/`. Use a free port for each bench, and stop every bench and process that you started.
+A change is done when `npm test`, the `--check` and `npm run lint` pass; CI runs them on every push. Run the smoke test as well for changes to `index.js` or `src/host/`. Use a free port for each bench, and stop every bench and process that you started.
 
-## Branches, pull requests and issues
+## Branches and workflow
 
-The full workflow is in [CONTRIBUTING.md](CONTRIBUTING.md#how-we-work). The parts that an agent must follow:
+This fork does not take contributions upstream: no pull requests to `origin`, no upstream issue triage. Work lands on the development branch the user names (currently `v0.3.8`) and is pushed to `spbot` only when the user says so.
 
-- Start work from the latest `dev` on a branch named `fix/<issue>-<name>`, `feat/<issue>-<name>`, `docs/<name>` or `chore/<name>`. Never start a branch name with `dev/`. Open the pull request into `dev`, not `main`; only releases and hotfixes go into `main`.
-- Bring a branch up to date with `scripts/merge-dev.sh`: it merges `origin/dev`, takes a conflicting `ds-bot/client.js` from dev and rebuilds it. Never rebase a pushed branch and never force-push.
-- Fill in the pull request template. Link the issue with `Fixes #<number>`; a bug fix names the bug it fixes. Write the user-visible change in the Changelog field, and do not edit `CHANGELOG.md`.
-- Do not start work on an issue or pull request with the `maintainer` label; it waits for the maintainer. Do not take an issue that someone else is assigned to.
-- Before you change behavior, read the design for it in `docs/plans/` (and `docs/vision.md`); for interface work also `docs/design/ui-standard.md`. A change to a decided design needs the maintainer; a new large feature adds its design note to the same pull request.
-- Do not close an issue without evidence: the pull request or commit that fixed it, the issue it duplicates, or the reason it will not be fixed.
-- To triage issues, follow [.agents/skills/issue-triage/SKILL.md](.agents/skills/issue-triage/SKILL.md).
+- Branch names are free-form (`<topic>`, `fix/<name>`, `feat/<name>`); do not start a branch name with `dev/`.
+- Local branches and tags share names (`v0.3.8` exists as both). Always use explicit refspecs with git: `git push spbot refs/heads/<branch>` and `git push spbot refs/tags/<tag>`.
+- To sync with upstream later, `scripts/merge-dev.sh` merges `origin/dev` and rebuilds a conflicting `client.js`. Never rebase a pushed branch and never force-push.
+- Before you change behavior, read the design for it in `docs/plans/` (and `docs/vision.md`); for interface work also `docs/design/ui-standard.md`.
 - To record a demonstration GIF for an interface change, follow [.agents/skills/record-browser-gif/SKILL.md](.agents/skills/record-browser-gif/SKILL.md).
 
 ## Layout
 
-- `ds-bot/index.js` and `ds-bot/src/host/`: the server side (roster and store, tools, turns and delivery, groups, conversation parts and the search index, images, the browser bridge, the `api/bot` channel).
+- `ds-bot/index.js` and `ds-bot/src/host/`: the server side (roster and store, tools, turns and delivery, groups, conversation parts and the search index, images, the browser bridge, the `api/bot` channel). Platform adapters live in `ds-bot/src/host/connectors/` (Feishu, QQ, mail, and the connector gateway/catalog).
 - `ds-bot/src/client/`: the browser side (sidebar, chat, panels, themes, characters, the Bot browser panel).
 - `ds-bot/web-search.js`: the `auto` web-search provider, independent of the Bot team code.
 - `ds-bot/test/`: unit tests and fixtures. `ds-bot/dev/`: the DSH packages for the tests (`harness/`), mock model, test bench, smoke test, character generator, Desktop scripts for Linux.
 - `app/`: the desktop app (Electron main process and window, first-run setup and import, installer and updates).
+- `browser-plugins/`: the Bot browser plugins (`refs/` snapshot-and-click, `script/` one-shot scripts), with its own bench and tests.
+- `link/`: the encrypted link between the DS Bot phone app and the computer, plus its Relay Server (design in `docs/plans/2026-10-24-mobile-app.md`).
+- `mobile/`: the DS Bot iOS/Android app; it controls the Bot team on the computer and runs nothing itself.
+- `docker/`: Docker deployment of DS Bot as a `dsh web` server with the plugin installed (NAS / always-on box); `docker-compose*.yml` and `start.ps1` at the root belong to this and local startup.
 
 ## Style
 
