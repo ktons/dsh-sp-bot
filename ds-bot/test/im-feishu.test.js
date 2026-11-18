@@ -1,458 +1,244 @@
 import assert from 'node:assert/strict'
-import { createServer } from 'node:http'
+import { setTimeout as delay } from 'node:timers/promises'
 import { test } from 'node:test'
-import feishu, { decodeFrame, encodeFrame } from '../src/host/im/platforms/feishu.js'
-import { fakeWsServer } from './fake-ws.js'
+import feishu from '../src/host/im/platforms/feishu.js'
 
-// A fake Feishu that answers only the calls the real service answers, with the
-// real shapes: the tenant token is a string, /callback/ws/endpoint needs the
-// Bearer token and the uppercase AppID/AppSecret body, and anything else is a
-// 404. A regression to the old path, a token object or lowercase fields fails
-// here instead of passing against a permissive mock.
-async function fakeFeishu() {
-  const calls = []
-  const frames = []
-  const replies = {}
-  const resources = {}
-  const tokens = []
-  let tokenValidUntil = 0
-  let tokenReplyDelay = 0
-  let failResources = false
-  // The resource endpoint sends the file itself, not a JSON envelope.
-  const imageBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4])
-  const json = (res, body) => {
-    res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify(body))
+// Fakes for the @larksuiteoapi/node-sdk surface the adapter uses: the OpenAPI
+// client (message create/patch, resources, raw bot info) and the WSClient.
+// The behaviors queue drives each start() attempt.
+class FakeLark {
+  constructor(opts) {
+    this.opts = opts
+    this.created = []
+    this.patched = []
+    this.resources = []
+    FakeLark.instances.push(this)
   }
-  // A tenant token also dies when its two hours are up, like the real one.
-  const authorized = (req) => req.headers.authorization === `Bearer ${tokens.at(-1)}` && Date.now() < tokenValidUntil
-  const refused = (res) => json(res, { code: 99991668, msg: 'user access token not support' })
-  const http = createServer((req, res) => {
-    let body = ''
-    req.on('data', chunk => { body += chunk })
-    req.on('end', () => {
-      const params = JSON.parse(body || '{}')
-      calls.push({ method: req.method, path: req.url, params, auth: req.headers.authorization })
-      const override = replies[req.url]
-      if (override !== undefined) { json(res, override.result); return }
-      if (req.url === '/open-apis/auth/v3/tenant_access_token/internal') {
-        if (params.app_id !== 'cli_a1' || params.app_secret !== 'sec') { json(res, { code: 10003, msg: 'invalid param' }); return }
-        const token = `fs-tok-${tokens.length + 1}`
-        tokens.push(token)
-        tokenValidUntil = Date.now() + 7_200_000
-        setTimeout(() => json(res, { code: 0, tenant_access_token: token, expire: 7200 }), tokenReplyDelay)
-        return
-      }
-      if (req.url === '/open-apis/bot/v3/info') {
-        if (!authorized(req)) { refused(res); return }
-        json(res, { code: 0, bot: { open_id: 'ou_bot', app_name: 'fakebot' } })
-        return
-      }
-      if (req.method === 'POST' && req.url === '/callback/ws/endpoint') {
-        if (!authorized(req)) { refused(res); return }
-        const uppercase = params.AppID === 'cli_a1' && params.AppSecret === 'sec'
-          && params.appId === undefined && params.appSecret === undefined
-        if (!uppercase) { json(res, { code: 10003, msg: 'invalid param' }); return }
-        json(res, { code: 0, msg: 'success', data: { URL: wss.url, ClientConfig: { PingInterval: 90, ReconnectInterval: 90 } } })
-        return
-      }
-      if (req.url.startsWith('/open-apis/im/v1/messages/') && req.url.includes('/resources/')) {
-        if (failResources || !authorized(req)) { res.writeHead(401); res.end(); return }
-        res.writeHead(200, { 'content-type': 'application/octet-stream' })
-        res.end(resources[req.url] ?? imageBytes)
-        return
-      }
-      if (req.url.startsWith('/open-apis/im/v1/messages')) {
-        if (!authorized(req)) { refused(res); return }
-        json(res, { code: 0, data: { message_id: 'om_x' } })
-        return
-      }
-      res.writeHead(404, { 'content-type': 'text/plain' })
-      res.end('404 page not found')
-    })
-  })
-  const wss = await fakeWsServer({
-    onSocket(ws) {
-      ws.on('message', (raw) => {
-        const frame = decodeFrame(Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), 'utf8'))
-        frames.push({ ws, frame })
-      })
-      ws.send(encodeFrame({ SeqID: 1, LogID: 2, service: 100, method: 0, headers: [{ key: 'type', value: 'ping' }], payload: Buffer.from('ping') }))
+
+  im = {
+    message: {
+      create: async ({ data }) => {
+        const self = FakeLark.instances.at(-1)
+        self.created.push(data)
+        if (FakeLark.createFailures.shift() !== undefined) throw new Error('send refused')
+        return { data: { message_id: `om_${self.created.length}` } }
+      },
+      patch: async payload => { FakeLark.instances.at(-1).patched.push(payload); return {} },
     },
-  })
-  await new Promise(resolve => http.listen(0, '127.0.0.1', resolve))
-  return {
-    api: `http://127.0.0.1:${http.address().port}`,
-    calls, replies, resources, frames, tokens, imageBytes,
-    sockets: wss.sockets,
-    failDownloads: () => { failResources = true },
-    slowTokens: (ms) => { tokenReplyDelay = ms },
-    push: (ws, frame) => ws.send(encodeFrame(frame)),
-    dataFrame: (type, payload, extra = {}) => ({
-      SeqID: 9, LogID: 9, service: 100, method: 1,
-      headers: [{ key: 'type', value: type }, { key: 'message_id', value: extra.messageId ?? 'fm1' }, ...(extra.headers ?? [])],
-      payload: Buffer.from(JSON.stringify(payload)),
-    }),
-    close: () => { wss.close(); http.closeAllConnections?.(); http.close() },
+    messageResource: {
+      get: async payload => {
+        const self = FakeLark.instances.at(-1)
+        self.resources.push(payload)
+        return { getReadableStream: async function * () { yield Buffer.from(PNG_BYTES) } }
+      },
+    },
+  }
+
+  async request({ url }) {
+    this.requests ??= []
+    this.requests.push(url)
+    return { bot: { open_id: 'ou_bot', app_name: 'Feishu Bot' } }
   }
 }
+FakeLark.instances = []
+FakeLark.createFailures = []
 
-const env = (fake) => ({
-  fetch: globalThis.fetch,
-  WebSocket: globalThis.WebSocket,
-  config: { api: fake.api },
-  runtime: { get: () => ({}), set: () => {} },
-  log: { warn: (...args) => console.error('[im-feishu]', ...args) },
-})
-const FIELDS = { appId: 'cli_a1', appSecret: 'sec' }
-
-const until = async (fn, tries = 80) => {
-  for (let at = 0; at < tries; at += 1) {
-    const value = await fn()
-    if (value !== undefined && value !== false) return value
-    await new Promise(done => setTimeout(done, 50))
-  }
-  return undefined
+class FakeEventDispatcher {
+  static last = null
+  constructor() { FakeEventDispatcher.last = this }
+  register(map) { this.map = map; return map }
 }
 
-const message = (body) => ({
-  header: { event_type: 'im.message.receive_v1' },
-  event: {
-    sender: { sender_id: { open_id: 'ou_u1' } },
-    message: body,
-  },
-})
-
-test('check asks for a tenant token and names the bot with it', async () => {
-  const fake = await fakeFeishu()
-  const { account } = await feishu.check(FIELDS, env(fake))
-  assert.equal(account.id, 'ou_bot')
-  assert.equal(account.name, 'fakebot')
-  const token = fake.calls.find(call => call.path === '/open-apis/auth/v3/tenant_access_token/internal')
-  assert.equal(token.params.app_id, 'cli_a1')
-  // The Bearer token is the token string, not the tenantToken() result object.
-  const info = fake.calls.find(call => call.path === '/open-apis/bot/v3/info')
-  assert.equal(info.auth, `Bearer ${fake.tokens[0]}`)
-  await fake.close()
-})
-
-test('the fake refuses the old path, an object token and lowercase fields', async (t) => {
-  const fake = await fakeFeishu()
-  t.after(() => fake.close())
-  const answer = await fetch(`${fake.api}/open-apis/auth/v3/tenant_access_token/internal`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ app_id: 'cli_a1', app_secret: 'sec' }),
-  })
-  const { tenant_access_token: token } = await answer.json()
-  const post = async (path, body, auth) => {
-    const response = await fetch(`${fake.api}${path}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...(auth === undefined ? {} : { authorization: auth }) },
-      body: JSON.stringify(body),
-    })
-    return { response, body: await response.json().catch(() => undefined) }
+class FakeWSClient {
+  constructor(opts) {
+    this.opts = opts
+    this.closed = 0
+    FakeWSClient.instances.push(this)
   }
-  const oldPath = await post('/open-apis/bot/v2/endpoint', { AppID: 'cli_a1', AppSecret: 'sec' }, `Bearer ${token}`)
-  assert.equal(oldPath.response.status, 404)
-  const objectToken = await post('/callback/ws/endpoint', { AppID: 'cli_a1', AppSecret: 'sec' }, 'Bearer [object Object]')
-  assert.equal(objectToken.body.code, 99991668)
-  const lowercase = await post('/callback/ws/endpoint', { appId: 'cli_a1', appSecret: 'sec' }, `Bearer ${token}`)
-  assert.equal(lowercase.body.code, 10003)
-})
 
-test('a ping gets a pong, a p2p is direct, a group counts only with a mention, data frames are ACKed', async (t) => {
-  const fake = await fakeFeishu()
-  const messages = []
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: async msg => { messages.push(msg) }, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  const endpoint = await until(() => fake.calls.find(call => call.path === '/callback/ws/endpoint'))
-  assert.equal(endpoint.auth, `Bearer ${fake.tokens[0]}`)
-  assert.deepEqual(endpoint.params, { AppID: 'cli_a1', AppSecret: 'sec' })
-  // The ping sent on connect gets a pong back.
-  await until(() => fake.frames.some(({ frame }) => frame.method === 0 && frame.headers.some(h => h.key === 'type' && h.value === 'pong')))
-  fake.push(ws, fake.dataFrame('event', message({ chat_type: 'p2p', chat_id: 'oc_1', message_id: 'om_1', message_type: 'text', content: JSON.stringify({ text: 'hello' }) }), { messageId: 'fm1' }))
-  fake.push(ws, fake.dataFrame('event', message({ chat_type: 'group', chat_id: 'oc_2', message_id: 'om_2', message_type: 'text', content: JSON.stringify({ text: '@_user_1 ping' }), mentions: [{ key: '@_user_1', id: { open_id: 'ou_bot' } }] }), { messageId: 'fm2' }))
-  fake.push(ws, fake.dataFrame('event', message({ chat_type: 'group', chat_id: 'oc_2', message_id: 'om_3', message_type: 'text', content: JSON.stringify({ text: 'noise' }), mentions: [] }), { messageId: 'fm3' }))
-  await until(() => messages.length === 3)
-  assert.equal(messages[0].chat.kind, 'direct')
-  assert.equal(messages[1].chat.kind, 'group')
-  assert.equal(messages[1].mentioned, true)
-  assert.equal(messages[1].text, 'ping')
-  assert.equal(messages[2].mentioned, false)
-  // Each data frame was ACKed back with the {"code":200} payload.
-  await until(() => fake.frames.filter(({ frame }) => frame.method === 1 && frame.headers.some(h => h.key === 'biz_rt')).length === 3)
-})
+  async start({ eventDispatcher }) {
+    // The real SDK wraps the registration; the fake keeps the plain map.
+    this.registered = eventDispatcher.map ?? eventDispatcher
+    const behavior = FakeWSClient.behaviors.shift()
+    if (behavior !== undefined) return behavior(this)
+    await this.opts.onReady?.()
+  }
 
-for (const [mediaType, bytes] of [
-  ['image/png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
-  ['image/jpeg', Buffer.from([0xff, 0xd8, 0xff, 0xe0])],
-  ['image/gif', Buffer.from('GIF89a')],
-  ['image/webp', Buffer.from('RIFF\x04\x00\x00\x00WEBP')],
-]) {
-  test(`an inbound ${mediaType} keeps its bytes and declares their format`, async (t) => {
-    const fake = await fakeFeishu()
-    const messages = []
-    fake.resources['/open-apis/im/v1/messages/om_image/resources/img_1?type=image'] = bytes
-    const handle = feishu.connect(FIELDS, env(fake), { onMessage: async msg => { messages.push(msg) }, onAction() {}, onStatus() {} })
-    t.after(() => { handle.stop(); fake.close() })
-    const ws = await until(() => fake.sockets[0])
-    fake.push(ws, fake.dataFrame('event', message({
-      chat_type: 'p2p', chat_id: 'oc_1', message_id: 'om_image',
-      message_type: 'image', content: JSON.stringify({ image_key: 'img_1' }),
-    })))
-    await until(() => messages.length === 1)
-    assert.deepEqual(messages[0].images, [{ mediaType, data: bytes.toString('base64') }])
-  })
+  close() { this.closed += 1 }
+
+  async emit(event, payload) { await this.registered?.[event]?.(payload) }
 }
+FakeWSClient.instances = []
+FakeWSClient.behaviors = []
 
-test('an unrecognized image is diagnosed instead of being declared as PNG', async (t) => {
-  const fake = await fakeFeishu()
-  const messages = []
-  const warnings = []
-  fake.resources['/open-apis/im/v1/messages/om_image/resources/img_1?type=image'] = Buffer.from('not an image')
-  const environment = { ...env(fake), log: { warn: (...args) => warnings.push(args.join(' ')) } }
-  const handle = feishu.connect(FIELDS, environment, { onMessage: async msg => { messages.push(msg) }, onAction() {}, onStatus() {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  fake.push(ws, fake.dataFrame('event', message({
-    chat_type: 'p2p', chat_id: 'oc_1', message_id: 'om_image',
-    message_type: 'image', content: JSON.stringify({ image_key: 'img_1' }),
-  })))
-  await until(() => warnings.length > 0 || messages.length > 0)
-  assert.equal(messages.length, 0)
-  assert.match(warnings.join('\n'), /unsupported image format/i)
-})
+const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
 
-test('a card action reports the button data', async (t) => {
-  const fake = await fakeFeishu()
+const connect = async (fields = { appId: 'cli_a', appSecret: 'sec', domain: 'feishu' }) => {
+  FakeLark.instances.length = 0
+  FakeWSClient.instances.length = 0
+  FakeWSClient.behaviors.length = 0
+  const statuses = []
+  const inbound = []
   const actions = []
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: () => {}, onAction: async action => { actions.push(action) }, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  await until(() => fake.sockets.length === 1)
-  fake.push(ws, fake.dataFrame('card', {
-    header: { event_type: 'card.action.trigger' },
-    event: { action: { value: { v: 'q:q1:0' } }, operator: { open_id: 'ou_u1' }, context: { open_chat_id: 'oc_1' }, message_id: 'om_9' },
-  }, { messageId: 'fm9' }))
-  await until(() => actions.length === 1)
-  assert.equal(actions[0].data, 'q:q1:0')
-  assert.equal(actions[0].messageId, 'om_9')
+  const handle = feishu.connect(fields, { config: { larkSdk: { Client: FakeLark, WSClient: FakeWSClient, EventDispatcher: FakeEventDispatcher } }, log: { warn: (...args) => console.error('[warn]', ...args) } }, {
+    onStatus: next => statuses.push(next),
+    onMessage: async msg => inbound.push(msg),
+    onAction: async action => actions.push(action),
+  })
+  await delay(20)
+  return { handle, statuses, inbound, actions, ws: FakeWSClient.instances.at(-1), lark: FakeLark.instances.at(-1) }
+}
+
+const ready = async (s) => { s.ws.opts.onReady(); await delay(5) }
+
+const textEvent = overrides => ({
+  message: {
+    chat_type: 'p2p', chat_id: 'oc_1', message_id: 'om_1', message_type: 'text',
+    content: JSON.stringify({ text: 'hello' }),
+    ...overrides,
+  },
+  sender: { sender_id: { open_id: 'ou_u' } },
+  ...overrides?.top,
 })
 
-test('send posts text and an interactive card, edit patches the message', async (t) => {
-  const fake = await fakeFeishu()
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: () => {}, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  await until(() => fake.sockets[0])
-  await until(() => fake.calls.some(call => call.path === '/open-apis/bot/v3/info'))
-  const { messageId } = await handle.send({ key: 'oc_1', kind: 'direct' }, { text: 'hello', buttons: [{ data: 'q:q1:0', label: 'yes' }] })
-  const post = fake.calls.find(call => call.path.startsWith('/open-apis/im/v1/messages?'))
-  assert.ok(post, 'messages POST called')
-  assert.equal(post.params.receive_id, 'oc_1')
-  assert.equal(post.params.msg_type, 'interactive')
-  const card = JSON.parse(post.params.content)
-  const action = card.body.elements.at(-1)
-  assert.equal(action.tag, 'action')
-  assert.equal(action.actions[0].value.v, 'q:q1:0')
-  assert.equal(messageId, 'om_x')
-  await handle.edit({ key: 'oc_1', kind: 'direct' }, 'om_9', { text: 'done', buttons: [] })
-  const patch = fake.calls.find(call => call.method === 'PATCH' && call.path === '/open-apis/im/v1/messages/om_9')
-  assert.ok(patch, 'message PATCH called')
+test('check reads the bot identity', async () => {
+  FakeLark.instances.length = 0
+  const fields = { appId: 'cli_a', appSecret: 'sec', domain: 'feishu' }
+  const account = await feishu.check(fields, { config: { larkSdk: { Client: FakeLark } } })
+  assert.deepEqual(account, { account: { id: 'ou_bot', name: 'Feishu Bot' } })
 })
 
-test('send drops blank lines at the start and end of the text', async (t) => {
-  const fake = await fakeFeishu()
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: () => {}, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  await until(() => fake.sockets[0])
-  await until(() => fake.calls.some(call => call.path === '/open-apis/bot/v3/info'))
-  await handle.send({ key: 'oc_1', kind: 'direct' }, { text: '\n\nfirst\n\nsecond\n\n' })
-  const posts = fake.calls.filter(call => call.path.startsWith('/open-apis/im/v1/messages?'))
-  assert.equal(posts.length, 1)
-  assert.equal(posts[0].params.msg_type, 'text')
-  assert.equal(JSON.parse(posts[0].params.content).text, 'first\n\nsecond')
+test('p2p messages map to the adapter contract', async () => {
+  const s = await connect()
+  try {
+    await ready(s)
+    await s.ws.emit('im.message.receive_v1', textEvent({ content: JSON.stringify({ text: 'hi @_user_1' }) }))
+    assert.deepEqual(s.inbound[0], {
+      chat: { key: 'oc_1', kind: 'direct', title: 'oc_1' },
+      sender: { id: 'ou_u', name: 'ou_u' },
+      text: 'hi', images: [], files: [], mentioned: false, messageId: 'om_1',
+    })
+  } finally { s.handle.stop() }
 })
 
-test('a dropped socket reconnects through a fresh endpoint and a renewed token', async (t) => {
-  const fake = await fakeFeishu()
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: () => {}, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  await until(() => fake.calls.filter(call => call.path === '/callback/ws/endpoint').length === 1)
-  // Move the clock past the token's expiry, so the next handshake has to renew it.
-  const realNow = Date.now
-  Date.now = () => realNow() + 7_300_000
-  t.after(() => { Date.now = realNow })
-  ws.close()
-  const endpoint = await until(() => fake.calls.filter(call => call.path === '/callback/ws/endpoint')[1], 160)
-  assert.ok(endpoint, 'handshake after the reconnect')
-  assert.equal(fake.tokens.length, 2)
-  assert.equal(endpoint.auth, `Bearer ${fake.tokens[1]}`)
-})
-
-test('a refused handshake reports the code and the message', async (t) => {
-  const fake = await fakeFeishu()
-  fake.replies['/callback/ws/endpoint'] = { result: { code: 10003, msg: 'invalid param' } }
-  const statuses = []
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: () => {}, onAction: () => {}, onStatus: status => { statuses.push(status) } })
-  t.after(() => { handle.stop(); fake.close() })
-  const error = await until(() => statuses.find(status => status.state === 'error'))
-  assert.ok(error, 'an error status')
-  assert.match(error.error, /invalid param/)
-  assert.match(error.error, /10003/)
-})
-
-test('a network failure at start is retried until the platform answers (#1119)', async (t) => {
-  const fake = await fakeFeishu()
-  const statuses = []
-  const base = env(fake)
-  let down = true
-  const fetch = async (...args) => {
-    if (down) throw new TypeError('fetch failed')
-    return base.fetch(...args)
-  }
-  const handle = feishu.connect(FIELDS, { ...base, fetch }, { onMessage: () => {}, onAction: () => {}, onStatus: next => statuses.push(next) })
-  t.after(() => { handle.stop(); fake.close() })
-  const failed = await until(() => statuses.find(status => status.state === 'retrying'))
-  assert.match(failed.error, /fetch failed/)
-  down = false
-  await until(() => statuses.some(status => status.state === 'ready'), 160)
-  assert.ok(fake.calls.some(call => call.path === '/open-apis/auth/v3/tenant_access_token/internal'))
-  assert.equal(fake.sockets.length, 1)
-})
-
-test('a ws endpoint failure after the token is accepted is retried (#1119)', async (t) => {
-  const fake = await fakeFeishu()
-  const statuses = []
-  const base = env(fake)
-  let down = true
-  let handshakes = 0
-  const fetch = async (url, ...rest) => {
-    if (String(url).endsWith('/callback/ws/endpoint')) {
-      handshakes += 1
-      if (down) throw new TypeError('fetch failed')
+test('group messages detect a bot mention by open id', async () => {
+  const s = await connect()
+  try {
+    await ready(s)
+    await delay(10) // the bot info call fills the mention check
+    const group = {
+      message: {
+        chat_type: 'group', chat_id: 'oc_g', message_id: 'om_2', message_type: 'text',
+        content: JSON.stringify({ text: '@_user_1 do it' }),
+        mentions: [{ id: { open_id: 'ou_bot' }, key: '@_user_1' }],
+      },
+      sender: { sender_id: { open_id: 'ou_m' } },
     }
-    return base.fetch(url, ...rest)
-  }
-  const handle = feishu.connect(FIELDS, { ...base, fetch }, { onMessage: () => {}, onAction: () => {}, onStatus: next => statuses.push(next) })
-  t.after(() => { handle.stop(); fake.close() })
-  const failed = await until(() => statuses.find(status => status.state === 'retrying'))
-  assert.match(failed.error, /fetch failed/)
-  // The token and bot identity were accepted first, so this covers the websocket
-  // handshake and not a second token failure.
-  assert.equal(fake.calls.filter(call => call.path === '/open-apis/auth/v3/tenant_access_token/internal').length, 1)
-  assert.ok(fake.calls.some(call => call.path === '/open-apis/bot/v3/info'))
-  assert.equal(fake.sockets.length, 0)
-  down = false
-  const ready = await until(() => statuses.slice(statuses.indexOf(failed) + 1).find(status => status.state === 'ready'), 160)
-  assert.ok(ready !== undefined, 'the connection became ready after the retry')
-  assert.equal(handshakes, 2)
-  assert.equal(fake.sockets.length, 1, 'the retry opened one socket, not one per attempt')
+    await s.ws.emit('im.message.receive_v1', group)
+    assert.equal(s.inbound[0].mentioned, true)
+    assert.equal(s.inbound[0].text, 'do it')
+    await s.ws.emit('im.message.receive_v1', { ...group, message: { ...group.message, mentions: [] } })
+    assert.equal(s.inbound[1].mentioned, false)
+  } finally { s.handle.stop() }
 })
 
-test('a socket that cannot be built at the handshake is retried (#1119)', async (t) => {
-  const fake = await fakeFeishu()
+test('images download as typed attachments', async () => {
+  const s = await connect()
+  try {
+    await ready(s)
+    await s.ws.emit('im.message.receive_v1', textEvent({
+      message_type: 'image',
+      content: JSON.stringify({ image_key: 'img_v2_1' }),
+      message_id: 'om_3',
+    }))
+    await delay(10)
+    assert.deepEqual(s.lark.resources[0], { params: { type: 'image' }, path: { message_id: 'om_3', file_key: 'img_v2_1' } })
+    assert.equal(s.inbound[0].images[0].mediaType, 'image/png')
+    assert.equal(Buffer.from(s.inbound[0].images[0].data, 'base64').equals(PNG_BYTES), true)
+  } finally { s.handle.stop() }
+})
+
+test('card actions unpack the { v } button value', async () => {
+  const s = await connect()
+  try {
+    await ready(s)
+    await s.ws.emit('card.action.trigger', {
+      action: { value: { v: 'allow:7' } },
+      context: { open_chat_id: 'oc_1', open_message_id: 'om_9' },
+      operator: { open_id: 'ou_u' },
+    })
+    assert.deepEqual(s.actions[0], {
+      chat: { key: 'oc_1', kind: 'direct', title: '' },
+      sender: { id: 'ou_u', name: '' },
+      data: 'allow:7', messageId: 'om_9',
+    })
+  } finally { s.handle.stop() }
+})
+
+test('long replies chunk as text and carry the card on the last chunk', async () => {
+  const s = await connect()
+  try {
+    await ready(s)
+    const buttons = [{ label: 'Allow', data: 'allow:1' }, { label: 'Reject', data: 'reject:1' }]
+    await s.handle.send({ key: 'oc_1' }, { text: 'a'.repeat(5500), buttons })
+    assert.equal(s.lark.created.length, 2)
+    assert.equal(s.lark.created[0].msg_type, 'text')
+    assert.equal(s.lark.created[0].receive_id, 'oc_1')
+    const cardBody = JSON.parse(s.lark.created[1].content).body
+    assert.equal(s.lark.created[1].msg_type, 'interactive')
+    const columns = cardBody.elements.find(el => el.tag === 'column_set').columns
+    assert.equal(columns.length, 2)
+    assert.deepEqual(columns[0].elements[0].behaviors[0].value, { v: 'allow:1' })
+    assert.deepEqual(JSON.parse(s.lark.created[1].content).body.elements.find(el => el.tag === 'markdown'), { tag: 'markdown', content: 'a'.repeat(1500) })
+  } finally { s.handle.stop() }
+})
+
+test('edits patch the card in place', async () => {
+  const s = await connect()
+  try {
+    await ready(s)
+    await s.handle.edit({ key: 'oc_1' }, 'om_5', { text: 'answered', buttons: [{ label: 'Done', data: 'done' }] })
+    assert.deepEqual(s.lark.patched[0].path, { message_id: 'om_5' })
+    const content = JSON.parse(s.lark.patched[0].data.content)
+    assert.equal(content.body.elements[0].content, 'answered')
+    assert.deepEqual(content.body.elements[1].columns[0].elements[0].behaviors[0].value, { v: 'done' })
+  } finally { s.handle.stop() }
+})
+
+test('connection states follow the SDK lifecycle', async () => {
+  const s = await connect()
+  try {
+    assert.deepEqual(s.statuses, [{ state: 'connecting' }, { state: 'ready' }])
+    s.ws.opts.onReconnecting()
+    s.ws.opts.onReconnected()
+    assert.deepEqual(s.statuses, [
+      { state: 'connecting' },
+      { state: 'ready' },
+      { state: 'retrying', error: 'Feishu is reconnecting' },
+      { state: 'ready' },
+    ])
+  } finally { s.handle.stop() }
+})
+
+test('a failed handshake retries with a fresh client and connects', async () => {
+  const s = await connect()
+  s.handle.stop()
+  FakeWSClient.instances.length = 0
+  FakeWSClient.behaviors.length = 0
+  FakeWSClient.behaviors.push(() => { throw new Error('ECONNREFUSED') })
   const statuses = []
-  const base = env(fake)
-  let failures = 1
-  const WebSocket = function (...args) {
-    if (failures > 0) { failures -= 1; throw new TypeError('socket unavailable') }
-    return new base.WebSocket(...args)
-  }
-  const handle = feishu.connect(FIELDS, { ...base, WebSocket }, { onMessage: () => {}, onAction: () => {}, onStatus: next => statuses.push(next) })
-  t.after(() => { handle.stop(); fake.close() })
-  const failed = await until(() => statuses.find(status => status.state === 'retrying'))
-  assert.match(failed.error, /could not open a socket/)
-  const ready = await until(() => statuses.slice(statuses.indexOf(failed) + 1).find(status => status.state === 'ready'), 160)
-  assert.ok(ready !== undefined, 'the connection became ready after a new socket')
-  assert.equal(fake.sockets.length, 1)
-})
-
-test('an inbound image refreshes an expired tenant token before download', async (t) => {
-  const fake = await fakeFeishu()
-  const messages = []
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: async msg => { messages.push(msg) }, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  const image = (id) => fake.dataFrame('event', message({
-    chat_type: 'p2p', chat_id: 'oc_1', message_id: id, message_type: 'image',
-    content: JSON.stringify({ image_key: `key_${id}` }),
-  }), { messageId: id })
-  fake.push(ws, image('om_1'))
-  await until(() => messages.length === 1)
-  assert.equal(messages[0].images[0].data, fake.imageBytes.toString('base64'))
-  // Two hours later the cached token is dead: the download has to renew it.
-  const realNow = Date.now
-  Date.now = () => realNow() + 7_300_000
-  t.after(() => { Date.now = realNow })
-  fake.push(ws, image('om_2'))
-  await until(() => messages.length === 2)
-  assert.equal(messages[1].images.length, 1)
-  assert.equal(messages[1].images[0].data, fake.imageBytes.toString('base64'))
-  assert.equal(fake.tokens.length, 2, 'the expired token was renewed once')
-  const download = fake.calls.findLast(call => call.path.includes('/resources/'))
-  assert.equal(download.auth, `Bearer ${fake.tokens[1]}`)
-})
-
-test('a failed image download warns instead of staying silent', async (t) => {
-  const fake = await fakeFeishu()
-  const messages = []
-  const warns = []
-  const log = { warn: (...args) => warns.push(args.join(' ')) }
-  const handle = feishu.connect(FIELDS, { ...env(fake), log }, { onMessage: async msg => { messages.push(msg) }, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  fake.failDownloads()
-  fake.push(ws, fake.dataFrame('event', message({
-    chat_type: 'p2p', chat_id: 'oc_1', message_id: 'om_1', message_type: 'image',
-    content: JSON.stringify({ image_key: 'key_1' }),
-  }), { messageId: 'fm1' }))
-  await until(() => warns.length === 1)
-  assert.match(warns[0], /om_1/)
-  await until(() => messages.length === 1)
-  assert.equal(messages[0].images.length, 0, 'the message still arrives, without the image')
-})
-
-// #1417: the send path classified 5xx as retryable but carried no status, so the
-// queue could not tell a broken tunnel from a network blip and retried forever.
-test('a 5xx answer is retryable and carries its status; a 4xx answer is permanent', async () => {
-  const responding = (status, body) => async (url) => (url.endsWith('/tenant_access_token/internal')
-    ? { ok: true, status: 200, json: async () => ({ tenant_access_token: 'tok', expire: 7200 }) }
-    : { ok: false, status, json: async () => body })
-  await assert.rejects(feishu.check(FIELDS, { fetch: responding(502, { msg: 'bad gateway' }), config: { api: 'https://open.feishu.cn' } }), (error) => {
-    assert.equal(error.status, 502)
-    assert.notEqual(error.permanent, true, 'a 5xx must stay retryable')
-    return true
+  const handle = feishu.connect({ appId: 'cli_a', appSecret: 'sec', domain: 'feishu' }, { config: { larkSdk: { Client: FakeLark, WSClient: FakeWSClient, EventDispatcher: FakeEventDispatcher } } }, {
+    onStatus: next => statuses.push(next),
+    onMessage: async () => {},
+    onAction: async () => {},
   })
-  await assert.rejects(feishu.check(FIELDS, { fetch: responding(403, { msg: 'forbidden' }), config: { api: 'https://open.feishu.cn' } }), (error) => {
-    assert.equal(error.status, 403)
-    assert.equal(error.permanent, true, 'a 4xx is not retried')
-    return true
-  })
-})
-
-test('images arriving together after expiry share one token refresh', async (t) => {
-  const fake = await fakeFeishu()
-  const messages = []
-  const handle = feishu.connect(FIELDS, env(fake), { onMessage: async msg => { messages.push(msg) }, onAction: () => {}, onStatus: () => {} })
-  t.after(() => { handle.stop(); fake.close() })
-  const ws = await until(() => fake.sockets[0])
-  const realNow = Date.now
-  Date.now = () => realNow() + 7_300_000
-  t.after(() => { Date.now = realNow })
-  // Slow token replies make a second refresh overtake the first download
-  // deterministically; the fake only accepts its newest token.
-  fake.slowTokens(50)
-  const image = (id) => fake.dataFrame('event', message({
-    chat_type: 'p2p', chat_id: 'oc_1', message_id: id, message_type: 'image',
-    content: JSON.stringify({ image_key: `key_${id}` }),
-  }), { messageId: id })
-  fake.push(ws, image('om_1'))
-  fake.push(ws, image('om_2'))
-  await until(() => messages.length === 2)
-  assert.equal(fake.tokens.length, 2, 'two expired downloads share the one refresh')
-  assert.equal(messages[0].images.length, 1)
-  assert.equal(messages[1].images.length, 1)
+  try {
+    await delay(500)
+    assert.deepEqual(statuses, [
+      { state: 'connecting' },
+      { state: 'retrying', error: 'ECONNREFUSED' },
+      { state: 'ready' },
+    ])
+    assert.equal(FakeWSClient.instances.length, 2)
+  } finally { handle.stop() }
 })
