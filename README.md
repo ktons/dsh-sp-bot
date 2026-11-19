@@ -74,6 +74,12 @@ The main bot is your chief. It has very high rights: it manages the other bots a
 
 In short: have a question? Ask the main bot.
 
+### Supervisor bot and lanes
+
+When you work across several projects, watching each one costs attention. A supervisor bot (spbot) takes that watching over: pick Supervisor when creating a bot, then hand it the project folders to manage, each with an alias, in its settings. It discusses with you what a project needs, and the work itself happens in lanes — ordinary sessions it dispatches into those workspaces, or takes over from sessions already there. It never reads the code or implements itself, and it runs no acceptance either: everything closes the loop inside the lane, and it judges from the lane's reports whether a project is done.
+
+Lanes only move on the supervisor's word. When a lane hits a question mid-work, it asks the supervisor, which answers so the lane carries on — instead of "should I continue with X?" landing on you. Approvals a lane needs still come to you; a supervisor never approves on your behalf. Workspaces that have lanes show up in the sidebar's plain-session area, one group per workspace; open a lane to read it like any session, stop or release it from its row menu, and use New lane… in a group to open the supervisor's chat — the dispatch stays its move. Standing instructions you write for a supervisor become a playbook skill it loads when it needs them, not a permanent prompt.
+
 ### Group chats
 
 DS Bot has group chats. A group chat is a great way to get several bots to work together, but it clearly costs more. So DS Bot does this: every group chat has an admin. The admin answers your messages by default and calls in the other bots for you. You can also @ a bot directly, and it answers you directly. To give the bots another chat as context, use + → Reference a chat in the message box.
