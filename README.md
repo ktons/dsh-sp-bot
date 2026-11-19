@@ -8,6 +8,9 @@ English | [中文](README.zh.md)
 
 DS Bot is an open-source project built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH), available as a standalone desktop app or as a DSH plugin. It turns DSH into bots that you create, talk to and work with.
 
+> [!NOTE]
+> **This is a fork.** `ktons/dsh-sp-bot` forks [Fei2411/DS-Bot](https://github.com/Fei2411/DS-Bot) to build a **bot monitoring mechanism** on top of DS Bot: watching what each Bot is doing — its turns, tool calls, approvals and results — so the team's behavior stays observable and checkable. This fork develops in its own direction and does not send changes back upstream; it may drift from the features described below. The rest of this page is the upstream README and describes upstream DS Bot.
+
 ## Sponsors
 
 <table>
@@ -105,9 +108,9 @@ All bots share your desktop, so only one bot can use a given app or the foregrou
 
 ### IM
 
-In Settings → IM, you can link a bot or group chat to WeChat, Feishu, DingTalk, WeCom, QQ, Telegram, Discord or Slack. Once paired, you can talk to your bots, @ them in groups, and answer question and approval cards directly from your chat app without a public IP or open port on your computer.
+In Settings → IM, you can link a bot or group chat to Feishu/Lark or QQ. Once paired, you can talk to your bots, @ them in groups, and answer question and approval cards directly from your chat app without a public IP or open port on your computer.
 
-Messages only flow while your computer is awake and DS Bot is running. WeChat only supports private chat with the QR-paired account, not group chats; WeChat and QQ only allow replies within a platform time window after you send a message, and sending another message resumes it. WeChat, QQ and DingTalk do not have card buttons, so reply with the option number instead; for security, secret cards cannot be filled in from chat apps.
+Messages only flow while your computer is awake and DS Bot is running. QQ only allows replies within a platform time window after you send a message, and sending another message resumes it. QQ does not have card buttons, so reply with the option number instead; for security, secret cards cannot be filled in from chat apps.
 
 ### Connectors and capabilities
 

@@ -257,6 +257,16 @@ their ideas; it does not contain their code.
     records with the same steps (record, resample to 16 kHz mono, PCM16 WAV)
     before it calls the plugin's speech service.
 
+  - @larksuiteoapi/node-sdk (https://www.npmjs.com/package/@larksuiteoapi/node-sdk),
+    MIT License, Copyright (c) 2026 Lark: the Feishu/Lark adapter connects
+    and sends through this official SDK (ds-bot/src/host/im/platforms/feishu.js).
+  - @tencent-connect/qqbot-nodejs (https://www.npmjs.com/package/@tencent-connect/qqbot-nodejs),
+    MIT License, Copyright (c) Tencent: the QQ adapter connects and sends
+    through this official SDK (ds-bot/src/host/im/platforms/qq.js).
+  - dsh-im (https://www.npmjs.com/package/@xmanrui/dsh-im), MIT License,
+    Copyright (c) xmanrui: the two adapters follow dsh-im's connection
+    lifecycle, card layout and QQ markdown delivery strategy.
+
 Agent logos (ds-bot/src/client/agent-logos.js)
 The logos name the agent CLI a Bot runs on. Each is a trademark of its owner:
 Claude (Anthropic), Cursor (Anysphere), Gemini and Antigravity (Google), OpenCode (SST),
