@@ -8,6 +8,9 @@
 
 DS Bot 是一个基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（简称 dsh）的开源项目，提供独立桌面应用和 dsh 插件两种形态。它将 dsh 改造为 bot 形式，你可以与自己创建的 bot 交流、工作。
 
+> [!NOTE]
+> **本仓库是 fork。** `ktons/dsh-sp-bot` fork 自 [Fei2411/DS-Bot](https://github.com/Fei2411/DS-Bot)，目标是基于 DS Bot 做一套 **bot 监视机制**：观察每个 bot 正在做什么——它的回合、工具调用、审批与结果——让整个团队的行为可观察、可核查。本 fork 独立发展自己的方向，不会向上游回传改动，功能上可能与下文描述出现分歧。本页其余部分为上游 README，描述的是上游 DS Bot。
+
 ## 赞助
 
 <table>

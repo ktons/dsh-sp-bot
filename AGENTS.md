@@ -46,9 +46,10 @@ A change is done when `npm test`, the `--check` and `npm run lint` pass; run the
 
 ## Branches and workflow
 
-This fork does not take contributions upstream: no pull requests to `origin`, no upstream issue triage. Work lands on the development branch the user names (currently `v0.3.8`) and is pushed to `spbot` only when the user says so.
+This fork does not take contributions upstream: no pull requests to `origin`, no upstream issue triage. Development happens on topic branches; a change lands on `main` only after acceptance, merged with `--no-ff`. Push to `spbot` only when the user says so.
 
 - Branch names are free-form (`<topic>`, `fix/<name>`, `feat/<name>`); do not start a branch name with `dev/`.
+- `main` is this fork's own line, not a mirror of upstream. Never fast-forward it; accepted work enters it only through `git merge --no-ff <branch>`, so each accepted change keeps its branch shape in history.
 - Local branches and tags share names (`v0.3.8` exists as both). Always use explicit refspecs with git: `git push spbot refs/heads/<branch>` and `git push spbot refs/tags/<tag>`.
 - To sync with upstream later, `scripts/merge-dev.sh` merges `origin/dev` and rebuilds a conflicting `client.js`. Never rebase a pushed branch and never force-push.
 - Before you change behavior, read the design for it in `docs/plans/` (and `docs/vision.md`); for interface work also `docs/design/ui-standard.md`.
