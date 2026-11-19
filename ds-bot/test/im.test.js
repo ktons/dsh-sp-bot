@@ -731,6 +731,23 @@ test('reply origin: another source in the same turn withdraws the IM origin', as
   assert.equal(s.fake.sent.length, 0, 'a mixed turn sends nothing')
 })
 
+test('reply origin: a subagent settling inside the turn keeps the reply going out', async (t) => {
+  const s = await start()
+  t.after(s.stop)
+  await pairedConn(s)
+  await dm(s, 'u1', 'run the deep task')
+  s.imTurn('a')
+  // The subagent's result is injected into the same turn while it runs; the summary
+  // after it is the reply to the chat and must not be treated as a foreign source.
+  for (const kind of ['subagent-settled', 'agent-message']) {
+    s.emitEvent('a', 'user/message', { source: { kind, senderSessionId: 'child-1' }, content: [{ type: 'text', text: 'child output' }] })
+    s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: `summary after ${kind}` }] } })
+  }
+  await s.flush()
+  assert.deepEqual(s.fake.sent.map(entry => entry.text), ['summary after subagent-settled', 'summary after agent-message'])
+  assert.deepEqual(s.fake.sent.map(entry => entry.chat.key), ['dm-u1', 'dm-u1'])
+})
+
 test('reply origin: the turn ending stops later output from going out', async (t) => {
   const s = await start()
   t.after(s.stop)
