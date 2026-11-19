@@ -447,6 +447,13 @@ export function install(rt) {
   // Turns that may be a member's late result waking a group up again: wait for the first
   // message of the turn before dropping the chat's origin (see the turn/start handler).
   const pendingReset = new Set()
+  // The chat that asked in a direct chat's just-ended turn. A background subagent's
+  // settlement opens the NEXT turn, after the claim ended with its turn, so this
+  // memory is the only way that turn can still answer in the same chat. It is
+  // consumed when the next turn starts and revoked unless the turn's first message
+  // is the settlement or relay itself (see the turn/start handler).
+  const SETTLED_ORIGIN_LIMIT = 200
+  const settledOrigins = new Map()
   // Request id of an IM message → the chat it came from, until that message shows up.
   const requests = new Map()
   // IM origin held across a part switch until the resumed/handoff message opens.
@@ -1431,7 +1438,18 @@ export function install(rt) {
     if (event.type === 'turn/start') {
       const room = rt.roomOf(session.id)
       if (room === undefined) {
-        resetOrigin(session.id)
+        const settled = settledOrigins.get(session.id)
+        settledOrigins.delete(session.id)
+        if (settled === undefined) {
+          resetOrigin(session.id)
+        } else {
+          // The previous turn came from a chat; this one opened without reader input,
+          // which only a settlement or a relayed result does. Put the chat's origin
+          // back and let the turn's first message decide whether the work is still
+          // that chat's — the same rule a group's pending reset follows.
+          claimOrigin(session.id, settled.connId, settled.chatKey, settled.senderId, settled.binding)
+          pendingReset.add(session.id)
+        }
       } else {
         const working = rt.roomActive?.(room.id) || (rt.roomWorkView?.()[room.id] ?? []).length > 0
         // A group's own Session can start a turn for the last member's late result after
@@ -1483,6 +1501,14 @@ export function install(rt) {
       // working and post later; only a Bot's turn ending ends the chat's claim. A
       // pending reset means the turn never got a message to classify, so apply it now.
       if (rt.roomOf(session.id) === undefined) {
+        const origin = origins.get(session.id)
+        if (origin !== undefined) {
+          settledOrigins.set(session.id, { ...origin })
+          if (settledOrigins.size > SETTLED_ORIGIN_LIMIT) {
+            settledOrigins.delete(settledOrigins.keys().next().value)
+          }
+        }
+        pendingReset.delete(session.id)
         resetOrigin(session.id)
         detachHeldOrigin(session.id)
       } else if (pendingReset.delete(session.id)) {

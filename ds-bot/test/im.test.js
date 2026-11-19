@@ -748,6 +748,57 @@ test('reply origin: a subagent settling inside the turn keeps the reply going ou
   assert.deepEqual(s.fake.sent.map(entry => entry.chat.key), ['dm-u1', 'dm-u1'])
 })
 
+test('reply origin: a background settle opening the next turn answers the same chat', async (t) => {
+  const s = await start()
+  t.after(s.stop)
+  await pairedConn(s)
+  await dm(s, 'u1', 'run the deep task')
+  s.imTurn('a')
+  s.emitEvent('a', 'turn/end', {})
+  // A background subagent settles after the turn ended: the notice opens the next
+  // turn, and the summary after it is still the reply to the chat that asked.
+  s.emitEvent('a', 'turn/start', { turn: 2 })
+  s.emitEvent('a', 'user/message', { source: { kind: 'subagent-settled', senderSessionId: 'child-1' }, content: [{ type: 'text', text: 'child output' }] })
+  s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'summary after settle' }] } })
+  await s.flush()
+  assert.deepEqual(s.fake.sent.map(entry => entry.text), ['summary after settle'])
+  assert.deepEqual(s.fake.sent.map(entry => entry.chat.key), ['dm-u1'])
+})
+
+test('reply origin: consecutive settle turns keep the same chat in the loop', async (t) => {
+  const s = await start()
+  t.after(s.stop)
+  await pairedConn(s)
+  await dm(s, 'u1', 'run the deep task')
+  s.imTurn('a')
+  s.emitEvent('a', 'turn/end', {})
+  for (const turn of [2, 3]) {
+    s.emitEvent('a', 'turn/start', { turn })
+    s.emitEvent('a', 'user/message', { source: { kind: 'agent-message', form: 'relay', senderSessionId: 'child-1' }, content: [{ type: 'text', text: 'child output' }] })
+    s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: `report ${turn}` }] } })
+    s.emitEvent('a', 'turn/end', {})
+  }
+  await s.flush()
+  assert.deepEqual(s.fake.sent.map(entry => entry.text), ['report 2', 'report 3'])
+  assert.deepEqual(s.fake.sent.map(entry => entry.chat.key), ['dm-u1', 'dm-u1'])
+})
+
+test('reply origin: a foreign first message in the next turn revokes the restored origin', async (t) => {
+  const s = await start()
+  t.after(s.stop)
+  await pairedConn(s)
+  await dm(s, 'u1', 'run the deep task')
+  s.imTurn('a')
+  s.emitEvent('a', 'turn/end', {})
+  // A scheduled task opens the next turn of the same Session: not the chat's to
+  // answer, whatever the previous turn asked there.
+  s.emitEvent('a', 'turn/start', { turn: 2 })
+  s.emitEvent('a', 'user/message', { source: { kind: 'schedule' }, content: [{ type: 'text', text: 'reminder' }] })
+  s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'scheduled answer' }] } })
+  await s.flush()
+  assert.equal(s.fake.sent.length, 0)
+})
+
 test('reply origin: the turn ending stops later output from going out', async (t) => {
   const s = await start()
   t.after(s.stop)
