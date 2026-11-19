@@ -55,6 +55,10 @@ export const REFERENCE_KIND = 'session-reference'
 // without an admin still answers as `everyone`.
 export const ROOM_MODES = ['everyone', 'admin']
 export const ROOM_NAME_MAX = 60
+// A lane's status, kept on the lane record. `asking` waits for its supervisor's
+// answer; `done` and `stopped` wait for nothing until the supervisor speaks again.
+export const LANE_STATUS = ['working', 'asking', 'blocked', 'idle', 'done', 'stopped']
+export const LANE_TITLE_MAX = 80
 export const ROOM_NOTICE_MAX = 2000
 export const ROOM_MAX_MEMBERS = 12
 // The shared to-do list of a group: one line per item, and a cap on the whole list so
@@ -78,6 +82,7 @@ export const TEAM_TOOLS = [
   'read_group_chat', 'remember', 'forget', 'recall', 'read_browser',
   'list_capabilities', 'save_capability', 'delete_capability',
   'attach_capability', 'detach_capability', 'group_goal', 'group_task', 'list_connectors', 'request_connector',
+  'dispatch_lane', 'adopt_lane', 'message_lane', 'list_lanes', 'stop_lane',
 ]
 // Consecutive automatic admin wakes with no goal progress before the goal waits
 // for the user instead of waking the admin again.

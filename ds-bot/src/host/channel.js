@@ -108,6 +108,9 @@ export function install(rt) {
     sideChats: rt.sideView?.() ?? {},
     // The team's DSH Agent (at most one): plain dsh Sessions, not Bots.
     agents: Object.values(state.agents),
+    // The lanes Supervisors dispatch in their managed workspaces: plain Sessions with
+    // a status, shown in the same plain-session surface as the DSH Agent's.
+    lanes: Object.values(state.lanes ?? {}).map(lane => ({ ...lane, spName: rt.botOf(lane.spBotId)?.name ?? null })),
     // Sidebar sections that group Bots, group chats and the DSH Agent by workflow.
     sections: state.sections ?? [],
     // Key names and who may use them; values never leave the host.
@@ -397,7 +400,7 @@ export function install(rt) {
         }
         case 'create-bot': {
           await rt.bootstrap()
-          const bot = await rt.createBot({ name: body.name, role: body.role, color: body.color, instructions: body.instructions, brief: body.brief, avatar: body.avatar, model: body.model, effort: body.effort, workDir: body.workDir, section: body.section, sectionId: body.sectionId })
+          const bot = await rt.createBot({ name: body.name, role: body.role, color: body.color, instructions: body.instructions, brief: body.brief, avatar: body.avatar, model: body.model, effort: body.effort, workDir: body.workDir, section: body.section, sectionId: body.sectionId, ...(body.type === 'supervisor' ? { kind: 'supervisor' } : {}) })
           return ok(bot)
         }
         case 'update-bot':
@@ -511,6 +514,44 @@ export function install(rt) {
           await rt.load()
           await rt.removeAgent(body.agentId)
           return ok(view())
+        // A Supervisor's managed workspaces and lanes. The user edits the workspaces in
+        // the Supervisor's settings; lanes are stopped, messaged, adopted and released
+        // from the sidebar's plain-session surface.
+        case 'sp-workspace-add': {
+          await rt.load()
+          const bot = rt.botOf(String(body.botId ?? ''))
+          if (bot === undefined) return fail('Unknown Bot', 'bot/not-found')
+          if (bot.kind !== 'supervisor') return fail('Only a Supervisor Bot manages workspaces', 'bot/not-supervisor')
+          return ok(await rt.addManaged(bot, { path: body.path, alias: body.alias }))
+        }
+        case 'sp-workspace-remove':
+          await rt.load()
+          {
+            const bot = rt.botOf(String(body.botId ?? ''))
+            if (bot === undefined) return fail('Unknown Bot', 'bot/not-found')
+            if (bot.kind !== 'supervisor') return fail('Only a Supervisor Bot manages workspaces', 'bot/not-supervisor')
+            rt.removeManaged(bot, body.workspace)
+            await rt.save()
+            return ok(bot.managed ?? [])
+          }
+        case 'lane-adopt': {
+          await rt.load()
+          const bot = rt.botOf(String(body.botId ?? ''))
+          if (bot === undefined) return fail('Unknown Bot', 'bot/not-found')
+          if (bot.kind !== 'supervisor') return fail('Only a Supervisor Bot takes lanes', 'bot/not-supervisor')
+          return ok(await rt.adoptLane(bot, { workspace: body.workspace, session: body.sessionId }))
+        }
+        case 'lane-stop':
+          await rt.load()
+          return ok(await rt.userStopLane({ laneId: String(body.laneId ?? '') }))
+        case 'lane-release':
+          await rt.load()
+          rt.releaseLane(String(body.laneId ?? ''))
+          await rt.save()
+          return ok(true)
+        case 'lane-message':
+          await rt.load()
+          return ok(await rt.userMessageLane({ laneId: String(body.laneId ?? ''), message: body.message }))
         case 'set-flags':
           await rt.load()
           return ok(await rt.setFlags(body.id, body))

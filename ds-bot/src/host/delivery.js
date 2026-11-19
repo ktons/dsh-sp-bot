@@ -29,6 +29,11 @@ export function install(rt) {
     if (resent && role !== 'room') return `[Message from ${fromName} · DeepSeek Harness restarted before it could reach you]`
     if (role === 'reply') return `[Reply from ${fromName}${goesOn}]`
     if (role === 'stopped') return `[Stopped by ${fromName}]`
+    // Lanes are not Bots: their reports go to the supervisor's chat for the user, their
+    // tasks and notes come from it. `fromName` of a lane message is "<alias> · <title>".
+    if (role === 'lane-report') return `[Lane report from ${fromName}${audience === 'user' ? ' · reply here; the user reads it and the lane does not' : ''}]`
+    if (role === 'lane-task') return `[Task from ${fromName}]`
+    if (role === 'lane-note') return `[Note from ${fromName}]`
     if (role === 'room') return `[Group chat "${roomName}" · ${note}]`
     if (role === 'report') return `[Group chat "${roomName}" · replies to your post${goesOn}]`
     if (role === 'kickoff') return '[Bot team setup]'
@@ -41,8 +46,9 @@ export function install(rt) {
     return `[Message from ${fromName}]`
   }
 
-  // Roles recorded as team exchanges.
-  const EXCHANGE_ROLES = new Set(['request', 'reply', 'stopped'])
+  // Roles recorded as team exchanges. Lane messages between a lane and its supervisor
+  // are recorded too, so they show in the supervisor's chat.
+  const EXCHANGE_ROLES = new Set(['request', 'reply', 'stopped', 'lane-report', 'lane-task', 'lane-note'])
 
   // What two Bots say to each other is in the book of the pair (ledger.js), whole, written
   // before the message goes out. A message is shown once a record says it was delivered.
@@ -84,8 +90,11 @@ export function install(rt) {
   async function deliver({ fromId, fromName: senderName, toId, sessionId, text, role, replyTo, roomId, audience, note, exchangeId = randomUUID(), steer = false, deferred = false, resumed = false, retried = false, resent = false, merged = false, abandoned = false, recordExchange = true, askedBy, fromRoomId, fromPart, images = [], files = [], length, work }) {
     const from = rt.botOf(fromId)
     const to = rt.botOf(toId)
-    if (to === undefined) throw new Error(`Unknown Bot ${toId}`)
-    const fromName = senderName ?? from?.name ?? 'You'
+    // A lane is a plain Session the team tracks, not a Bot: a delivery to or from one
+    // names it by its record and speaks into its one Session.
+    const toLane = to === undefined ? rt.laneOf?.(toId) : undefined
+    if (to === undefined && toLane === undefined) throw new Error(`Unknown Bot ${toId}`)
+    const fromName = senderName ?? from?.name ?? rt.laneOf?.(fromId)?.title ?? 'You'
     const room = rt.roomOf(roomId)
     const asker = work === undefined ? undefined : rt.botOf(state.works?.[work]?.from)?.name
     // Session events reject `undefined` members, so optional fields are omitted instead.

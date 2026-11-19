@@ -4,7 +4,7 @@
 import { copyFileSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { LEGACY_THEMES, MAX_EXCHANGES, ROOM_MODES, SECTION_COLORS, SECTION_NAME_MAX, TEXT_KEPT } from './constants.js'
+import { LANE_STATUS, LEGACY_THEMES, MAX_EXCHANGES, ROOM_MODES, SECTION_COLORS, SECTION_NAME_MAX, TEXT_KEPT } from './constants.js'
 import { replaceFile } from './files.js'
 import { homeLock } from './home-lock.js'
 import { currentColor, headOf, normalize, unquote } from './text.js'
@@ -19,8 +19,8 @@ export const own = (table, key) => (table != null && Object.hasOwn(table, key) ?
 export function install(rt) {
   const { ctx, home, statePath } = rt
 
-  /** @type {{version:1, workspaceId?:string, mainBotIds:string[], bots:Record<string,any>, privateArchives:any[], rooms:Record<string,any>, agents:Record<string,any>, sections:any[], capabilities:{items:Record<string,any>}, exchanges:any[], exchangeTurns:Record<string,number[]>, revision:number}} */
-  const state = { version: 1, mainBotIds: [], bots: {}, privateArchives: [], rooms: {}, agents: {}, sections: [], capabilities: { items: {} }, exchanges: [], exchangeTurns: {}, works: {}, requests: {}, questions: {}, views: {}, closedCards: {}, prefs: {}, switching: {}, revision: 0 }
+  /** @type {{version:1, workspaceId?:string, mainBotIds:string[], bots:Record<string,any>, privateArchives:any[], rooms:Record<string,any>, agents:Record<string,any>, lanes:Record<string,any>, sections:any[], capabilities:{items:Record<string,any>}, exchanges:any[], exchangeTurns:Record<string,number[]>, revision:number}} */
+  const state = { version: 1, mainBotIds: [], bots: {}, privateArchives: [], rooms: {}, agents: {}, lanes: {}, sections: [], capabilities: { items: {} }, exchanges: [], exchangeTurns: {}, works: {}, requests: {}, questions: {}, views: {}, closedCards: {}, prefs: {}, switching: {}, revision: 0 }
   let loaded = null
   let storeReady = false
   let writing = Promise.resolve()
@@ -131,6 +131,21 @@ export function install(rt) {
     }
     if (state.bots === null || typeof state.bots !== 'object' || Array.isArray(state.bots)) state.bots = {}
     if (state.rooms === null || typeof state.rooms !== 'object' || Array.isArray(state.rooms)) state.rooms = {}
+    // A lane belongs to a Supervisor Bot and is keyed by its own Session id; one whose
+    // supervisor is gone (or was never a supervisor) is dropped, its Session stays.
+    if (state.lanes === null || typeof state.lanes !== 'object' || Array.isArray(state.lanes)) state.lanes = {}
+    for (const [id, lane] of Object.entries(state.lanes)) {
+      const supervisor = state.bots[lane?.spBotId]
+      if (!lane || typeof lane !== 'object' || Array.isArray(lane) || sessionIdOf(lane.id) === undefined || supervisor === undefined || supervisor.kind !== 'supervisor') {
+        delete state.lanes[id]
+        migrated = true
+        continue
+      }
+      if (lane.id !== id) { lane.id = id; migrated = true }
+      if (!LANE_STATUS.includes(lane.status)) { lane.status = 'idle'; migrated = true }
+      if (lane.ask !== undefined && (typeof lane.ask !== 'object' || typeof lane.ask.question !== 'string' || lane.ask.question === '')) { delete lane.ask; migrated = true }
+      if (typeof lane.title !== 'string' || lane.title === '') { lane.title = 'Lane'; migrated = true }
+    }
     for (const [id, bot] of Object.entries(state.bots)) {
       if (!bot || typeof bot !== 'object' || Array.isArray(bot)) {
         delete state.bots[id]

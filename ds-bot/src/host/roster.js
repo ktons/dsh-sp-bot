@@ -73,16 +73,17 @@ export function install(rt) {
 
   // Under the PTC preset (DSH Desktop's default) a model may call only run_code, which
   // turns down the group_relay call that a group chat's Session is given. A Session
-  // keeps the preset it is made with. Main and team Bots take one of this plugin's
-  // presets, which carry the team rules (see prompt.js); the group's relay Session and
-  // every missing or broken preset falls back to the neutral standard.
-  async function botPreset(self, main) {
+  // keeps the preset it is made with. Main, team and Supervisor Bots take one of this
+  // plugin's presets, which carry their rules (see prompt.js); the group's relay Session
+  // and every missing or broken preset falls back to the neutral standard.
+  async function botPreset(self, main, kind) {
     const presets = ctx.get?.('agentPresets')
     if (presets === undefined) return {}
     const list = await presets.list()
     const usable = id => list.some(preset => preset.id === id && preset.broken === undefined)
-    const wanted = self === undefined && main === undefined ? 'standard'
-      : (main ?? rt.isMain(self)) ? 'ds-bot-main' : 'ds-bot-team'
+    const wanted = self === undefined && main === undefined && kind === undefined ? 'standard'
+      : (main ?? rt.isMain(self)) ? 'ds-bot-main'
+      : (kind ?? rt.botOf(self)?.kind) === 'supervisor' ? 'ds-bot-sp' : 'ds-bot-team'
     return usable(wanted) ? { agentPreset: wanted } : usable('standard') ? { agentPreset: 'standard' } : {}
   }
 
@@ -92,7 +93,7 @@ export function install(rt) {
   // `self` is the Bot whose Session this is; `main` says so before the Bot exists in the
   // roster yet (a fresh Main Bot's id arrives with its Session). With neither, this is a
   // group's relay Session and stays on the neutral standard preset.
-  async function createSession(title, { dir, self, main } = {}) {
+  async function createSession(title, { dir, self, main, kind } = {}) {
     // A Bot's tools run here too; while another dsh holds the team, a new Session would
     // belong to no saved Bot.
     const readOnly = rt.readOnly()
@@ -101,7 +102,7 @@ export function install(rt) {
     if (dir !== undefined && !usable) rt.warn('ds-bot: the working folder %s is gone; %s starts in the team workspace', dir, title)
     const known = usable ? await ctx.workspaceRegistry.resolveByPath(dir) : undefined
     const place = known !== undefined ? { workspaceId: known.id } : usable ? { cwd: dir } : { workspaceId: await ensureWorkspace() }
-    const { sessionId } = await ctx.sessionController.create({ ...place, ...await botPreset(self, main) })
+    const { sessionId } = await ctx.sessionController.create({ ...place, ...await botPreset(self, main, kind) })
     const agent = await rt.resolveAgent(sessionId)
     await ctx.sessionTitle.rename(agent.session, title)
     return sessionId
@@ -197,7 +198,10 @@ export function install(rt) {
     return holdName('bot', cleanName, () => buildBot(cleanName, options))
   }
 
-  async function buildBot(cleanName, { role = '', instructions = '', color, brief = '', createdBy, main = false, avatar, model, effort, workDir, copyOf, pickModel = false, section, sectionId }) {
+  async function buildBot(cleanName, { role = '', instructions = '', color, brief = '', createdBy, main = false, kind, avatar, model, effort, workDir, copyOf, pickModel = false, section, sectionId }) {
+    // The kind is fixed at creation: a Supervisor Bot's Session takes the ds-bot-sp
+    // preset, which is locked once the Session has run, so a kind cannot be patched in later.
+    const botKind = kind === 'supervisor' ? 'supervisor' : undefined
     const cleanAvatarValue = cleanAvatar(avatar)
     // The model is fixed at creation, so a later change of the DSH default leaves it alone.
     const modelRef = model ? await rt.resolveModel(model) : pickModel ? undefined : await rt.defaultBotModel()
@@ -213,13 +217,14 @@ export function install(rt) {
     const clash = dir === undefined ? undefined : await rt.privateClash(dir)
     if (clash) throw new Error(`${dir} is in or around the folder of ${clash.name}, a private Bot, so ${cleanName} cannot work there`)
     if (!main && (section !== undefined || sectionId !== undefined)) resolveSectionInput({ section, sectionId }, { allowCreate: false })
-    const id = await createSession(cleanName, { dir, main: main === true })
+    const id = await createSession(cleanName, { dir, main: main === true, kind: botKind })
     try {
       const resolvedSecId = !main ? resolveSectionInput({ section, sectionId }) : undefined
       state.bots[id] = {
         id,
         name: cleanName,
         role: String(role).trim().slice(0, 24),
+        ...(botKind ? { kind: botKind } : {}),
         // A color is only stored when the user picks one; otherwise the id picks it.
         ...(isColor(currentColor(color)) ? { color: currentColor(color) } : {}),
         ...(cleanAvatarValue ? { avatar: cleanAvatarValue } : {}),
@@ -246,7 +251,9 @@ export function install(rt) {
             ? `${creator.name} just created you for the user.${brief ? ` Why you exist: ${brief}` : ''}\nGreet the user in one short message, then ask in one short question where to start. Keep it brief.`
             : brief
               ? `The user just created you and sent this first message:\n\n${brief}\n\nIntroduce yourself in one short line, then help with it.`
-              : 'The user just created you. Greet the user in one short message, then ask in one short question what you should focus on.'
+              : botKind === 'supervisor'
+                ? 'The user just created you as a Supervisor. Greet the user in one short message, then ask in one short question which of their project folders you should manage and watch for them.'
+                : 'The user just created you. Greet the user in one short message, then ask in one short question what you should focus on.'
       const opener = `${kickoff}\n${OWN_RULES}`
       const text = !main && language ? `${opener}\nWrite in ${language}.` : opener
       const bot = state.bots[id]
@@ -254,6 +261,9 @@ export function install(rt) {
       // The Bot is saved by now; a failure here must not archive it in the catch below.
       const scopeTools = () => rt.resolveAgent(id)
         .catch(error => rt.warn('ds-bot: scoped tools for %s not applied: %s', cleanName, error))
+        // The Agent was made before the record was, so its playbook mount is missed by
+        // the agent/created listener and lands here (lanes.js).
+        .then(() => { if (botKind === 'supervisor') return rt.refreshPlaybook?.(id) })
       if (modelRef === undefined) {
         bot.kickoff = greeting
         await rt.save()
@@ -493,6 +503,8 @@ export function install(rt) {
     if (modelChanged) await rt.applyModel(bot, { force: true })
     if (engineChanged) void rt.followEngine(bot.id)
     if (moved) void rt.followFolder({ botId: bot.id })
+    // The playbook skill carries the instructions, so a change must re-mount it.
+    if (bot.kind === 'supervisor' && bot.instructions !== instructionsBefore) void rt.refreshPlaybook?.(bot.id)
     // A new model lifted what blocked the Bot; a new thinking level alone fixes nothing.
     // releaseKickoff itself leaves when the Bot still lacks a model or holds no greeting.
     if (modelChanged && bot.blocked === undefined) await releaseKickoff(bot)
@@ -960,6 +972,9 @@ export function install(rt) {
         archiving: true,
       } : undefined
       await rt.releaseBot(id, [...parts, ...rt.groupSessionsOf(id)])
+      // A Supervisor's lanes outlive it: the records and their lane tools go, the
+      // sessions stay in the workspace they were dispatched in.
+      rt.releaseLanesOf?.(id)
       if (closedArchive !== undefined) state.privateArchives = [...(state.privateArchives ?? []).filter(entry => entry.id !== id), closedArchive]
       delete state.bots[id]
       // The shared capability list is the user's and keeps its items; only a

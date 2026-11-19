@@ -419,6 +419,7 @@ export function install(rt) {
       name: { type: 'string', required: true, description: 'Short display name, e.g. "Researcher" or "Editor"' },
       role: { type: 'string', required: true, description: 'Two-to-four character role label shown under the name' },
       instructions: { type: 'string', required: true, description: 'What this Bot is responsible for and how it should work' },
+      type: { type: 'string', enum: ['supervisor'], description: 'Leave out for a normal Bot. "supervisor": a thin Supervisor that watches the project workspaces the user gives it, dispatches lanes there, and answers their questions so work keeps moving' },
       brief: { type: 'string', description: 'Why the user wants it, passed to the new Bot as its first context' },
       model: { type: 'string', description: 'Model the Bot runs on, as provider/model or a model id. Only when the user names one; otherwise the team default model from DS Bot settings, or the model you run on.' },
       effort: { type: 'string', description: 'Thinking level for the model, as list_bot_models shows it. Only when the user names one.' },
@@ -442,7 +443,7 @@ export function install(rt) {
         const served = new Set((await rt.catalog()).filter(entry => entry.needsKey !== true && rt.isLocalAgentRef?.(entry.ref) !== true).map(entry => entry.ref))
         const fallback = [state.prefs.defaultBotModel, creator?.model].find(ref => ref && served.has(ref))
         const model = args.model || fallback
-        const bot = await rt.createBot({ ...args, avatar: avatar === undefined ? undefined : { image: avatar }, model, workDir, effort: args.effort, section: args.section, createdBy: creator?.id })
+        const bot = await rt.createBot({ ...args, kind: args.type === 'supervisor' ? 'supervisor' : undefined, avatar: avatar === undefined ? undefined : { image: avatar }, model, workDir, effort: args.effort, section: args.section, createdBy: creator?.id })
         return `Created ${bot.name}${workDir ? `, working in ${workDir}` : ''}. It is greeting the user now.`
       } catch (error) {
         return `Could not create the Bot: ${error.message}`
