@@ -1444,9 +1444,12 @@ export function install(rt) {
       const source = event.data?.source
       const imOrigin = source?.imOrigin
       const rpcId = source?.rpcId
+      // A subagent settling or reporting progress is the same turn carrying on inside,
+      // wherever it was asked: it never decides where the turn's replies belong.
+      const internal = source?.kind === 'subagent-settled' || source?.kind === 'agent-message'
       // A late member result or part-switch handoff continues the work the chat asked for;
       // any other first message starts a fresh turn, which clears the previous turn's origin.
-      if (pendingReset.delete(session.id) && !(typeof imOrigin === 'string' || (source?.kind === SOURCE_KIND && source.role === 'post'))) resetOrigin(session.id)
+      if (pendingReset.delete(session.id) && !(typeof imOrigin === 'string' || internal || (source?.kind === SOURCE_KIND && source.role === 'post'))) resetOrigin(session.id)
       if (typeof imOrigin === 'string') {
         const resumed = resumedOrigins.get(imOrigin)
         resumedOrigins.delete(imOrigin)
@@ -1463,6 +1466,9 @@ export function install(rt) {
       } else if (source?.kind === REPLY_KIND) {
         // Web and phone answers carry no registered IM request.
         dropOrigin(session.id)
+      } else if (internal) {
+        // A subagent's result or progress note joins the turn the chat asked for; without
+        // this the settlement used to withdraw the origin and the reply after it was lost.
       } else if (source?.kind === SOURCE_KIND && source.role === 'post') {
         // A member's late result relayed into the group's own Session. The group's work
         // is still the answer to the chat that asked, wherever the member runs.

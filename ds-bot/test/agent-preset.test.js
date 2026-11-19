@@ -78,7 +78,7 @@ const relayCall = async (relay, tools) => {
   return chunks.find(chunk => chunk.type === 'block-end').block
 }
 
-test('a new Bot Session is made with the standard preset when DSH serves it', async (t) => {
+test('a group relay Session is made with the standard preset when DSH serves it', async (t) => {
   const { rt, created, stop } = start({ presets: [{ id: 'ptc' }, { id: 'standard' }] })
   t.after(stop)
   await rt.load()
@@ -86,13 +86,38 @@ test('a new Bot Session is made with the standard preset when DSH serves it', as
   assert.deepEqual(created, [{ workspaceId: 'w1', agentPreset: 'standard' }])
 })
 
-test('without a usable standard preset a Bot Session keeps DSH\'s default', async (t) => {
+test('without a usable standard preset a relay Session keeps DSH\'s default', async (t) => {
   for (const presets of [undefined, [{ id: 'ptc' }], [{ id: 'standard', broken: 'failed to start' }]]) {
     const { rt, created, stop } = start({ presets })
     t.after(stop)
     await rt.load()
     await rt.createSession('Chief')
     assert.deepEqual(created, [{ workspaceId: 'w1' }])
+  }
+})
+
+test('a Main Bot takes ds-bot-main, a team Bot ds-bot-team, and a member Session follows its Bot', async (t) => {
+  const { rt, created, stop } = start({ presets: [{ id: 'ptc' }, { id: 'standard' }, { id: 'ds-bot-main' }, { id: 'ds-bot-team' }] })
+  t.after(stop)
+  await rt.load()
+  const chief = await rt.createBot({ name: 'Lead', role: 'Boss', main: true })
+  const dev = await rt.createBot({ name: 'Dev', role: 'Dev' })
+  await rt.createSession('Lead · Desk', { self: chief.id })
+  await rt.createSession('Dev · Desk', { self: dev.id })
+  assert.deepEqual(created.map(request => request.agentPreset), ['ds-bot-main', 'ds-bot-team', 'ds-bot-main', 'ds-bot-team'])
+})
+
+test('a missing or broken Bot preset falls back to standard, else to DSH\'s default', async (t) => {
+  for (const [presets, expected] of [
+    [[{ id: 'standard' }, { id: 'ds-bot-team', broken: 'failed to start' }], 'standard'],
+    [[{ id: 'ds-bot-team' }], 'ds-bot-team'],
+    [[{ id: 'ptc' }, { id: 'ds-bot-team', broken: 'failed to start' }], undefined],
+  ]) {
+    const { rt, created, stop } = start({ presets })
+    t.after(stop)
+    await rt.load()
+    await rt.createBot({ name: 'Dev', role: 'Dev' })
+    assert.equal(created.at(-1).agentPreset, expected)
   }
 })
 

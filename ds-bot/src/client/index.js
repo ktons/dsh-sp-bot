@@ -3,7 +3,7 @@ import { isHex, inkText, paintCss } from './inks.js'
 import { DEFAULT_MASK, SHAPES, markupCache, maskOf } from './characters.js'
 import { createSource, EMPTY_ROSTER, indexRoster, isAgentSession } from './sources.js'
 import { teamActions } from './team-actions.js'
-import { themeCss, shellTokens, registry, registerShape, registerTheme, allThemes, layoutOf, effectsOf, widthOf, flatWidthOf } from './themes.js'
+import { themeCss, shellTokens, registry, registerShape, registerTheme, allThemes, layoutOf, effectsOf, widthOf, flatWidthOf, nativeTranscript } from './themes.js'
 import { readSkinSurfaceVars, writeSkinSurfaceVars } from './skin.js'
 import { MENTION_ORIGIN, currentPart } from './text.js'
 import { SHELL_CSS, CONVERSATION_CSS, botOwnCss, installStyles, installCompiledStyles, RETURN_TOKENS } from './styles.js'
@@ -1236,7 +1236,14 @@ export function apply(ctx) {
     () => shadow('shell.overlay', { id: 'bot-signin', order: 55, inject: face }, DeepSeekSignIn),
     () => shadow('shell.overlay', { id: 'bot-toast', order: 60, inject: face }, ErrorToast),
   ]
-  const installConversation = () => [
+  // The `dsh` transcript pref leaves DSH's own conversation rendering in place: the
+  // Bot cells (steps, tool calls, process, failures) and the empty cells that hide
+  // condensation and context rows all stay off, so internal turns show as they are.
+  // Every other replacement of the group — turn tail, side cards, composer docks —
+  // keeps standing.
+  const installConversation = () => {
+    const native = nativeTranscript(roster.getSnapshot().prefs)
+    return [
     () => installCompiledStyles(CONVERSATION_CSS + READ_ONLY_CSS, 'conversation'),
     () => installCompiledStyles(TURN_ERROR_CSS, 'turn-errors'),
     () => installCompiledStyles(QUEUE_CSS, 'queue'),
@@ -1245,12 +1252,14 @@ export function apply(ctx) {
     () => installAtMenu(),
     installHeader,
     () => shadow('conversation.chat.text-interaction', { key: 'quote', priority: BOT_PRIORITY, locale: 'messageQuotes', inject: face }, TextSelectionAction),
-    () => shadow('conversation.chat.node', { key: 'assistant-step', priority: BOT_PRIORITY, locale: 'chat', inject: assistantFace }, AssistantCell),
+    ...(native ? [] : [
+      () => shadow('conversation.chat.node', { key: 'assistant-step', priority: BOT_PRIORITY, locale: 'chat', inject: assistantFace }, AssistantCell),
+      () => shadow('conversation.chat.node', { key: 'tool-call', priority: BOT_PRIORITY, locale: 'chat', inject: face }, ToolCell),
+      () => shadow('conversation.chat.node', { key: 'turn-process', priority: BOT_PRIORITY, locale: 'chat', inject: face }, TurnProcessCell),
+      // A failed turn shows what the user can do about it instead of the provider's raw text.
+      () => shadow('conversation.chat.node', { key: 'turn-error', priority: BOT_PRIORITY, locale: 'chat', inject: face }, FailureCell),
+    ]),
     () => shadow('conversation.chat.node', { key: 'turn-trigger', priority: BOT_PRIORITY, locale: 'chat', inject: face }, TriggerCell),
-    () => shadow('conversation.chat.node', { key: 'tool-call', priority: BOT_PRIORITY, locale: 'chat', inject: face }, ToolCell),
-    () => shadow('conversation.chat.node', { key: 'turn-process', priority: BOT_PRIORITY, locale: 'chat', inject: face }, TurnProcessCell),
-    // A failed turn shows what the user can do about it instead of the provider's raw text.
-    () => shadow('conversation.chat.node', { key: 'turn-error', priority: BOT_PRIORITY, locale: 'chat', inject: face }, FailureCell),
     // DSH's own turn tail stays, so what other plugins add there shows, such as the
     // cards of the files a turn delivered; its copy and branch row is hidden.
     () => shadow('conversation.chat.turnTail', { id: 'bot-turn-separators', order: 1000, inject: face }, TurnTailCell),
@@ -1264,10 +1273,14 @@ export function apply(ctx) {
     // A Bot condenses its conversation without telling anyone; the chat keeps showing
     // every message.
     () => shadow('conversation.chat.node', { key: 'question-reply', priority: BOT_PRIORITY, locale: 'chat' }, AnsweredReply),
-    () => shadow('conversation.chat.node', { key: 'compaction', priority: BOT_PRIORITY, locale: 'chat' }, CellEmpty),
     // A Bot chat leaves DSH's context lines (tool updates, injected context) out; a Bot
     // message spliced in mid-turn gets an event line from the step that reads it instead.
-    () => shadow('conversation.chat.node', { key: 'context', priority: BOT_PRIORITY, locale: 'chat' }, CellEmpty),
+    // The condensation and context rows keep hiding in the minimal transcript only:
+    // the native one shows every turn as it is.
+    ...(native ? [] : [
+      () => shadow('conversation.chat.node', { key: 'compaction', priority: BOT_PRIORITY, locale: 'chat' }, CellEmpty),
+      () => shadow('conversation.chat.node', { key: 'context', priority: BOT_PRIORITY, locale: 'chat' }, CellEmpty),
+    ]),
     ...(canDrawUserMessages(hostDrawsUserText) ? [() => installUserBubble(ctx.slots, () => {
       const offs = ['user', 'steering'].map(key => shadow('conversation.chat.node', { key, priority: BOT_PRIORITY, locale: 'chat', inject: face }, UserMessageCell))
       return () => { for (const off of offs) off() }
@@ -1311,7 +1324,8 @@ export function apply(ctx) {
     // drafts — including the team's relayed mail. Reusing its id puts ours in
     // its cell; it lists only the sends the user authored (#663).
     () => shadow('conversation.input.dock', { id: 'queue', order: 20, priority: BOT_PRIORITY, inject: queueFace }, QueueDock),
-  ]
+    ]
+  }
   // The return button belongs to neither group: it renders only in Agent mode.
   ctx.effect(() => installCompiledStyles(RETURN_TOKENS + RETURN_CSS, 'return'), 'ds-bot: return styles')
   ctx.effect(() => installCompiledStyles(COMPUTER_CSS, 'computer'), 'ds-bot: computer styles')
@@ -1421,8 +1435,18 @@ export function apply(ctx) {
     }
     reconcile()
     if (surface.getSnapshot().mode === 'bot') ensureBotHome()
+    // The transcript pref decides which conversation cells mount, so a change of it
+    // rebuilds the group; the cells cannot take it in while mounted.
+    let native = nativeTranscript(roster.getSnapshot().prefs)
+    const offPrefs = roster.subscribe(() => {
+      const next = nativeTranscript(roster.getSnapshot().prefs)
+      if (next === native) return
+      native = next
+      groups.remount('conversation')
+    })
     const unsub = surface.subscribe(reconcile)
     return () => {
+      offPrefs()
       unsub()
       clearTimeout(verifyTimer)
       groups.dispose()

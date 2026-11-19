@@ -805,6 +805,10 @@ var JA = {
   "Bubble width": "バブルの幅",
   "Text width": "本文の幅",
   "Show thinking": "思考プロセスを表示",
+  "Message rendering": "メッセージの描画",
+  "Minimal": "シンプル",
+  "DSH native": "DSH ネイティブ",
+  "DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes": "DSH ネイティブでは、Bot 間のやり取りや圧縮記録を含むすべてのターンをそのまま表示します。",
   "Enter sends message": "Enter キーでメッセージを送信",
   "Bring up related memory": "関連するメモリを自動的に参照",
   "Group memory size": "グループメモリの容量",
@@ -3240,6 +3244,10 @@ var KO = {
   "Bubble width": "말풍선 너비",
   "Text width": "본문 너비",
   "Show thinking": "사고 과정 표시",
+  "Message rendering": "메시지 렌더링",
+  "Minimal": "간결",
+  "DSH native": "DSH 기본",
+  "DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes": "DSH 기본 방식은 Bot 간 대화와 압축 기록을 포함한 모든 턴을 그대로 표시합니다.",
   "Enter sends message": "Enter 키로 메시지 전송",
   "Bring up related memory": "관련 메모리 자동으로 불러오기",
   "Group memory size": "그룹 메모리 용량",
@@ -5701,6 +5709,10 @@ var ES = {
   "Bubble width": "Ancho de burbuja",
   "Text width": "Ancho de texto",
   "Show thinking": "Mostrar razonamiento",
+  "Message rendering": "Representación de mensajes",
+  "Minimal": "Mínimo",
+  "DSH native": "DSH nativo",
+  "DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes": "DSH nativo muestra cada turno, incluidos los intercambios entre Bots y las notas de condensación.",
   "Enter sends message": "Enter envía el mensaje",
   "Bring up related memory": "Traer memoria relacionada",
   "Group memory size": "Tamaño de memoria del grupo",
@@ -8143,6 +8155,10 @@ var FR = {
   "Bubble width": "Largeur des bulles",
   "Text width": "Largeur du texte",
   "Show thinking": "Afficher la réflexion",
+  "Message rendering": "Rendu des messages",
+  "Minimal": "Minimal",
+  "DSH native": "DSH natif",
+  "DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes": "DSH natif affiche chaque tour, y compris les échanges entre bots et les notes de condensation.",
   "Enter sends message": "Entrée envoie le message",
   "Bring up related memory": "Rappeler automatiquement les souvenirs liés",
   "Group memory size": "Capacité de mémoire du groupe",
@@ -10578,6 +10594,10 @@ var DE = {
   "Bubble width": "Blasenbreite",
   "Text width": "Textbreite",
   "Show thinking": "Denkprozess anzeigen",
+  "Message rendering": "Nachrichten-Darstellung",
+  "Minimal": "Minimal",
+  "DSH native": "DSH nativ",
+  "DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes": "DSH nativ zeigt jeden Durchgang, auch Bot-zu-Bot-Austausche und Verdichtungsnotizen.",
   "Enter sends message": "Enter sendet Nachricht",
   "Bring up related memory": "Verwandte Erinnerungen automatisch einbeziehen",
   "Group memory size": "Kapazität des Gruppengedächtnisses",
@@ -13013,6 +13033,10 @@ var ZH = {
   "Bubble width": "气泡宽度",
   "Text width": "正文宽度",
   "Show thinking": "显示思考过程",
+  "Message rendering": "消息渲染",
+  "Minimal": "极简",
+  "DSH native": "DSH 原生",
+  "DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes": "DSH 原生按原样显示每个回合，包括 Bot 之间的交换与压缩记录。",
   "Enter sends message": "回车发送消息",
   "Bring up related memory": "自动带上相关记忆",
   "Group memory size": "群记忆容量",
@@ -15116,6 +15140,7 @@ var percent = (value, initial) => Number.isInteger(value) && value >= MESSAGE_WI
 var layoutOf = (prefs) => prefs?.layout === "flat" ? "flat" : "bubble";
 var effectsOf = (prefs) => prefs?.effects === "reduced" || prefs?.effects === "off" ? prefs.effects : "full";
 var thinkingShown = (prefs) => prefs?.thinking === true;
+var nativeTranscript = (prefs) => prefs?.transcript === "dsh";
 var widthOf = (prefs) => percent(prefs?.width, 80);
 var flatWidthOf = (prefs) => percent(prefs?.flatWidth, 100);
 
@@ -36693,6 +36718,7 @@ function SetRow({ label, hint, children, className = "" }) {
 }
 var LAYOUTS = [["bubble", "Bubble"], ["flat", "Flat"]];
 var EFFECTS = [["full", "Full"], ["reduced", "Reduced"], ["off", "None"]];
+var TRANSCRIPTS = [["minimal", "Minimal"], ["dsh", "DSH native"]];
 function Choice({ label, value, options, pick: pick2 }) {
   return (0, import_react51.createElement)(Segmented, { label, value, className: "bt-look-seg" }, options.map(([id, text]) => (0, import_react51.createElement)("button", {
     key: id,
@@ -36793,6 +36819,7 @@ function GeneralPage({ roster, actions, run: run2, dsh }) {
       (0, import_react51.createElement)(SetRow, { label: t("Bubble width") }, (0, import_react51.createElement)(WidthSlider, { label: t("Bubble width"), value: widthOf(prefs), save: (width) => run2(actions.setPrefs({ width })) })),
       (0, import_react51.createElement)(SetRow, { label: t("Interface motion") }, (0, import_react51.createElement)(Choice, { label: t("Interface motion"), value: effectsOf(prefs), options: EFFECTS, pick: (id) => run2(actions.setPrefs({ effects: id })) })),
       (0, import_react51.createElement)(SetRow, { label: t("Show thinking") }, (0, import_react51.createElement)(Switch, { label: t("Show thinking"), on: thinkingShown(prefs), onChange: (thinking) => run2(actions.setPrefs({ thinking })) })),
+      (0, import_react51.createElement)(SetRow, { label: t("Message rendering"), hint: t("DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes") }, (0, import_react51.createElement)(Choice, { label: t("Message rendering"), value: nativeTranscript(prefs) ? "dsh" : "minimal", options: TRANSCRIPTS, pick: (id) => run2(actions.setPrefs({ transcript: id })) })),
       look.map((id) => dshItem(dsh, id))
     ),
     (0, import_react51.createElement)(
@@ -46515,84 +46542,93 @@ function apply(ctx) {
     () => shadow("shell.overlay", { id: "bot-signin", order: 55, inject: face }, DeepSeekSignIn),
     () => shadow("shell.overlay", { id: "bot-toast", order: 60, inject: face }, ErrorToast)
   ];
-  const installConversation = () => [
-    () => installCompiledStyles(CONVERSATION_CSS + READ_ONLY_CSS, "conversation"),
-    () => installCompiledStyles(TURN_ERROR_CSS, "turn-errors"),
-    () => installCompiledStyles(QUEUE_CSS, "queue"),
-    () => installCompiledStyles(ANNOTATION_CSS, "text-annotation"),
-    () => installMentions(),
-    () => installAtMenu(),
-    installHeader,
-    () => shadow("conversation.chat.text-interaction", { key: "quote", priority: BOT_PRIORITY, locale: "messageQuotes", inject: face }, TextSelectionAction),
-    () => shadow("conversation.chat.node", { key: "assistant-step", priority: BOT_PRIORITY, locale: "chat", inject: assistantFace }, AssistantCell),
-    () => shadow("conversation.chat.node", { key: "turn-trigger", priority: BOT_PRIORITY, locale: "chat", inject: face }, TriggerCell),
-    () => shadow("conversation.chat.node", { key: "tool-call", priority: BOT_PRIORITY, locale: "chat", inject: face }, ToolCell),
-    () => shadow("conversation.chat.node", { key: "turn-process", priority: BOT_PRIORITY, locale: "chat", inject: face }, TurnProcessCell),
-    // A failed turn shows what the user can do about it instead of the provider's raw text.
-    () => shadow("conversation.chat.node", { key: "turn-error", priority: BOT_PRIORITY, locale: "chat", inject: face }, FailureCell),
-    // DSH's own turn tail stays, so what other plugins add there shows, such as the
-    // cards of the files a turn delivered; its copy and branch row is hidden.
-    () => shadow("conversation.chat.turnTail", { id: "bot-turn-separators", order: 1e3, inject: face }, TurnTailCell),
-    // A side question is not a transcript row. After its snapshot turn closes it
-    // sits on that turn's tail, ahead of the time separator.
-    () => shadow("conversation.chat.turnTail", { id: "bot-btw", order: 800, priority: BOT_PRIORITY, inject: face }, BtwTurnTail),
-    () => shadow("conversation.chat.turnTail", { id: "bot-learning", order: 850, priority: BOT_PRIORITY, inject: face }, LearningTurnTail),
-    // The cards of the files a turn delivered get a Save action beside DSH's own
-    // actions, so a phone browser can put the file on the device.
-    () => ctx.slots.inject("deliverables.file.actions", () => ctx.slots.register({ name: "deliverables.file.actions", id: "bot-file-save", locale: "chat" }, SaveFileAction)),
-    // A Bot condenses its conversation without telling anyone; the chat keeps showing
-    // every message.
-    () => shadow("conversation.chat.node", { key: "question-reply", priority: BOT_PRIORITY, locale: "chat" }, AnsweredReply),
-    () => shadow("conversation.chat.node", { key: "compaction", priority: BOT_PRIORITY, locale: "chat" }, CellEmpty),
-    // A Bot chat leaves DSH's context lines (tool updates, injected context) out; a Bot
-    // message spliced in mid-turn gets an event line from the step that reads it instead.
-    () => shadow("conversation.chat.node", { key: "context", priority: BOT_PRIORITY, locale: "chat" }, CellEmpty),
-    ...canDrawUserMessages(hostDrawsUserText) ? [() => installUserBubble(ctx.slots, () => {
-      const offs = ["user", "steering"].map((key) => shadow("conversation.chat.node", { key, priority: BOT_PRIORITY, locale: "chat", inject: face }, UserMessageCell));
-      return () => {
-        for (const off of offs) off();
-      };
-    })] : [],
-    // DSH 0.2.2-rc.1 draws user text by rules, and its file rule cuts "@新 Bot" at the
-    // space. A rule of ours claims a whole Bot name first; releases that still have the
-    // text projection (above) have no such registry.
-    ...typeof ctx.uiConversation.userText?.register === "function" ? [
-      () => installBotMentionRule(ctx.uiConversation.userText, roster),
-      () => shadow("conversation.user.text.node", { key: BOT_MENTION_ID, inject: face }, BotMention)
-    ] : [],
-    () => shadow("conversation.input.permission", { priority: BOT_PRIORITY }, Nothing),
-    () => shadow("conversation.input.plan", { priority: BOT_PRIORITY }, Nothing),
-    // The composer carries no model picker or run statistics; a Bot's model lives
-    // in its details panel.
-    () => shadow("conversation.input.model", { priority: BOT_PRIORITY }, Nothing),
-    () => shadow("conversation.composer.dock", { id: "activity", order: 0, priority: BOT_PRIORITY }, Nothing),
-    () => shadow("conversation.composer.dock", { id: "usage", order: 1, priority: BOT_PRIORITY }, Nothing),
-    () => shadow("conversation.composer.dock", { id: "btw", order: 2, priority: BOT_PRIORITY, inject: face }, BtwDock),
-    () => shadow("conversation.input.left", { id: "bot-paste", order: -110, inject: face }, PasteGuard),
-    () => shadow("conversation.input.left", { id: "bot-plus", order: -100, inject: face }, ComposerPlus),
-    () => shadow("conversation.input.right", { id: "bot-voice", order: 100, inject: face }, ComposerVoice),
-    () => shadow("conversation.composer", {
-      priority: BOT_PRIORITY,
-      select: (owner) => owner.pendingInteraction?.kind === "question" ? owner.pendingInteraction : null
-    }, QuestionCard),
-    () => shadow("conversation.input.dock", { id: "bot-paste", order: -130, inject: face }, PasteDock),
-    () => shadow("conversation.input.dock", { id: "bot-members", order: -120, inject: face }, MemberDock),
-    () => shadow("conversation.input.dock", { id: "bot-model", order: -110, inject: face }, ModelChoiceDock),
-    () => shadow("conversation.input.dock", { id: "bot-readonly", order: -105, inject: face }, ReadOnlyDock),
-    () => shadow("conversation.input.dock", { id: "bot-question", order: -100, inject: face }, QuestionDock),
-    () => shadow("conversation.input.dock", { id: "bot-view", order: -95, inject: face }, WidgetDock),
-    () => shadow("conversation.input.dock", { id: "bot-secret", order: -90, inject: face }, SecretDock),
-    () => shadow("conversation.input.dock", { id: "bot-connector", order: -89, inject: face }, ConnectorDock),
-    () => shadow("conversation.input.dock", { id: "bot-mail", order: -88, inject: face }, MailDock),
-    () => shadow("conversation.input.dock", { id: "bot-handoff", order: -85, inject: face }, HandoffDock),
-    () => shadow("conversation.input.dock", { id: "bot-computer-handoff", order: -84, inject: face }, ComputerHandoffDock),
-    () => shadow("conversation.input.dock", { id: "bot-computer-app", order: -83, inject: face }, AppAccessDock),
-    () => shadow("conversation.input.dock", { id: "bot-learning", order: 850, priority: BOT_PRIORITY, inject: face }, LearningDock),
-    // The shell's own queue dock lists every queued inbox row as the user's
-    // drafts — including the team's relayed mail. Reusing its id puts ours in
-    // its cell; it lists only the sends the user authored (#663).
-    () => shadow("conversation.input.dock", { id: "queue", order: 20, priority: BOT_PRIORITY, inject: queueFace }, QueueDock)
-  ];
+  const installConversation = () => {
+    const native = nativeTranscript(roster.getSnapshot().prefs);
+    return [
+      () => installCompiledStyles(CONVERSATION_CSS + READ_ONLY_CSS, "conversation"),
+      () => installCompiledStyles(TURN_ERROR_CSS, "turn-errors"),
+      () => installCompiledStyles(QUEUE_CSS, "queue"),
+      () => installCompiledStyles(ANNOTATION_CSS, "text-annotation"),
+      () => installMentions(),
+      () => installAtMenu(),
+      installHeader,
+      () => shadow("conversation.chat.text-interaction", { key: "quote", priority: BOT_PRIORITY, locale: "messageQuotes", inject: face }, TextSelectionAction),
+      ...native ? [] : [
+        () => shadow("conversation.chat.node", { key: "assistant-step", priority: BOT_PRIORITY, locale: "chat", inject: assistantFace }, AssistantCell),
+        () => shadow("conversation.chat.node", { key: "tool-call", priority: BOT_PRIORITY, locale: "chat", inject: face }, ToolCell),
+        () => shadow("conversation.chat.node", { key: "turn-process", priority: BOT_PRIORITY, locale: "chat", inject: face }, TurnProcessCell),
+        // A failed turn shows what the user can do about it instead of the provider's raw text.
+        () => shadow("conversation.chat.node", { key: "turn-error", priority: BOT_PRIORITY, locale: "chat", inject: face }, FailureCell)
+      ],
+      () => shadow("conversation.chat.node", { key: "turn-trigger", priority: BOT_PRIORITY, locale: "chat", inject: face }, TriggerCell),
+      // DSH's own turn tail stays, so what other plugins add there shows, such as the
+      // cards of the files a turn delivered; its copy and branch row is hidden.
+      () => shadow("conversation.chat.turnTail", { id: "bot-turn-separators", order: 1e3, inject: face }, TurnTailCell),
+      // A side question is not a transcript row. After its snapshot turn closes it
+      // sits on that turn's tail, ahead of the time separator.
+      () => shadow("conversation.chat.turnTail", { id: "bot-btw", order: 800, priority: BOT_PRIORITY, inject: face }, BtwTurnTail),
+      () => shadow("conversation.chat.turnTail", { id: "bot-learning", order: 850, priority: BOT_PRIORITY, inject: face }, LearningTurnTail),
+      // The cards of the files a turn delivered get a Save action beside DSH's own
+      // actions, so a phone browser can put the file on the device.
+      () => ctx.slots.inject("deliverables.file.actions", () => ctx.slots.register({ name: "deliverables.file.actions", id: "bot-file-save", locale: "chat" }, SaveFileAction)),
+      // A Bot condenses its conversation without telling anyone; the chat keeps showing
+      // every message.
+      () => shadow("conversation.chat.node", { key: "question-reply", priority: BOT_PRIORITY, locale: "chat" }, AnsweredReply),
+      // A Bot chat leaves DSH's context lines (tool updates, injected context) out; a Bot
+      // message spliced in mid-turn gets an event line from the step that reads it instead.
+      // The condensation and context rows keep hiding in the minimal transcript only:
+      // the native one shows every turn as it is.
+      ...native ? [] : [
+        () => shadow("conversation.chat.node", { key: "compaction", priority: BOT_PRIORITY, locale: "chat" }, CellEmpty),
+        () => shadow("conversation.chat.node", { key: "context", priority: BOT_PRIORITY, locale: "chat" }, CellEmpty)
+      ],
+      ...canDrawUserMessages(hostDrawsUserText) ? [() => installUserBubble(ctx.slots, () => {
+        const offs = ["user", "steering"].map((key) => shadow("conversation.chat.node", { key, priority: BOT_PRIORITY, locale: "chat", inject: face }, UserMessageCell));
+        return () => {
+          for (const off of offs) off();
+        };
+      })] : [],
+      // DSH 0.2.2-rc.1 draws user text by rules, and its file rule cuts "@新 Bot" at the
+      // space. A rule of ours claims a whole Bot name first; releases that still have the
+      // text projection (above) have no such registry.
+      ...typeof ctx.uiConversation.userText?.register === "function" ? [
+        () => installBotMentionRule(ctx.uiConversation.userText, roster),
+        () => shadow("conversation.user.text.node", { key: BOT_MENTION_ID, inject: face }, BotMention)
+      ] : [],
+      () => shadow("conversation.input.permission", { priority: BOT_PRIORITY }, Nothing),
+      () => shadow("conversation.input.plan", { priority: BOT_PRIORITY }, Nothing),
+      // The composer carries no model picker or run statistics; a Bot's model lives
+      // in its details panel.
+      () => shadow("conversation.input.model", { priority: BOT_PRIORITY }, Nothing),
+      () => shadow("conversation.composer.dock", { id: "activity", order: 0, priority: BOT_PRIORITY }, Nothing),
+      () => shadow("conversation.composer.dock", { id: "usage", order: 1, priority: BOT_PRIORITY }, Nothing),
+      () => shadow("conversation.composer.dock", { id: "btw", order: 2, priority: BOT_PRIORITY, inject: face }, BtwDock),
+      () => shadow("conversation.input.left", { id: "bot-paste", order: -110, inject: face }, PasteGuard),
+      () => shadow("conversation.input.left", { id: "bot-plus", order: -100, inject: face }, ComposerPlus),
+      () => shadow("conversation.input.right", { id: "bot-voice", order: 100, inject: face }, ComposerVoice),
+      () => shadow("conversation.composer", {
+        priority: BOT_PRIORITY,
+        select: (owner) => owner.pendingInteraction?.kind === "question" ? owner.pendingInteraction : null
+      }, QuestionCard),
+      () => shadow("conversation.input.dock", { id: "bot-paste", order: -130, inject: face }, PasteDock),
+      () => shadow("conversation.input.dock", { id: "bot-members", order: -120, inject: face }, MemberDock),
+      () => shadow("conversation.input.dock", { id: "bot-model", order: -110, inject: face }, ModelChoiceDock),
+      () => shadow("conversation.input.dock", { id: "bot-readonly", order: -105, inject: face }, ReadOnlyDock),
+      () => shadow("conversation.input.dock", { id: "bot-question", order: -100, inject: face }, QuestionDock),
+      () => shadow("conversation.input.dock", { id: "bot-view", order: -95, inject: face }, WidgetDock),
+      () => shadow("conversation.input.dock", { id: "bot-secret", order: -90, inject: face }, SecretDock),
+      () => shadow("conversation.input.dock", { id: "bot-connector", order: -89, inject: face }, ConnectorDock),
+      () => shadow("conversation.input.dock", { id: "bot-mail", order: -88, inject: face }, MailDock),
+      () => shadow("conversation.input.dock", { id: "bot-handoff", order: -85, inject: face }, HandoffDock),
+      () => shadow("conversation.input.dock", { id: "bot-computer-handoff", order: -84, inject: face }, ComputerHandoffDock),
+      () => shadow("conversation.input.dock", { id: "bot-computer-app", order: -83, inject: face }, AppAccessDock),
+      () => shadow("conversation.input.dock", { id: "bot-learning", order: 850, priority: BOT_PRIORITY, inject: face }, LearningDock),
+      // The shell's own queue dock lists every queued inbox row as the user's
+      // drafts — including the team's relayed mail. Reusing its id puts ours in
+      // its cell; it lists only the sends the user authored (#663).
+      () => shadow("conversation.input.dock", { id: "queue", order: 20, priority: BOT_PRIORITY, inject: queueFace }, QueueDock)
+    ];
+  };
   ctx.effect(() => installCompiledStyles(RETURN_TOKENS + RETURN_CSS, "return"), "ds-bot: return styles");
   ctx.effect(() => installCompiledStyles(COMPUTER_CSS, "computer"), "ds-bot: computer styles");
   shadow("sidebar.footer.action", { id: "bot-return", order: -300, inject: face }, BotReturn);
@@ -46680,8 +46716,16 @@ function apply(ctx) {
     };
     reconcile();
     if (surface.getSnapshot().mode === "bot") ensureBotHome();
+    let native = nativeTranscript(roster.getSnapshot().prefs);
+    const offPrefs = roster.subscribe(() => {
+      const next = nativeTranscript(roster.getSnapshot().prefs);
+      if (next === native) return;
+      native = next;
+      groups.remount("conversation");
+    });
     const unsub = surface.subscribe(reconcile);
     return () => {
+      offPrefs();
       unsub();
       clearTimeout(verifyTimer);
       groups.dispose();

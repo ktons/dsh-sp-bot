@@ -73,18 +73,26 @@ export function install(rt) {
 
   // Under the PTC preset (DSH Desktop's default) a model may call only run_code, which
   // turns down the group_relay call that a group chat's Session is given. A Session
-  // keeps the preset it is made with.
-  async function botPreset() {
+  // keeps the preset it is made with. Main and team Bots take one of this plugin's
+  // presets, which carry the team rules (see prompt.js); the group's relay Session and
+  // every missing or broken preset falls back to the neutral standard.
+  async function botPreset(self, main) {
     const presets = ctx.get?.('agentPresets')
     if (presets === undefined) return {}
-    const standard = (await presets.list()).some(preset => preset.id === 'standard' && preset.broken === undefined)
-    return standard ? { agentPreset: 'standard' } : {}
+    const list = await presets.list()
+    const usable = id => list.some(preset => preset.id === id && preset.broken === undefined)
+    const wanted = self === undefined && main === undefined ? 'standard'
+      : (main ?? rt.isMain(self)) ? 'ds-bot-main' : 'ds-bot-team'
+    return usable(wanted) ? { agentPreset: wanted } : usable('standard') ? { agentPreset: 'standard' } : {}
   }
 
   // `dir` is a working folder outside the team workspace. Such a Session is made by cwd
   // alone, so it joins no DSH workspace and the user's own project lists stay as they are —
   // unless the folder is already registered as a workspace, which it then joins (#710).
-  async function createSession(title, { dir } = {}) {
+  // `self` is the Bot whose Session this is; `main` says so before the Bot exists in the
+  // roster yet (a fresh Main Bot's id arrives with its Session). With neither, this is a
+  // group's relay Session and stays on the neutral standard preset.
+  async function createSession(title, { dir, self, main } = {}) {
     // A Bot's tools run here too; while another dsh holds the team, a new Session would
     // belong to no saved Bot.
     const readOnly = rt.readOnly()
@@ -93,7 +101,7 @@ export function install(rt) {
     if (dir !== undefined && !usable) rt.warn('ds-bot: the working folder %s is gone; %s starts in the team workspace', dir, title)
     const known = usable ? await ctx.workspaceRegistry.resolveByPath(dir) : undefined
     const place = known !== undefined ? { workspaceId: known.id } : usable ? { cwd: dir } : { workspaceId: await ensureWorkspace() }
-    const { sessionId } = await ctx.sessionController.create({ ...place, ...await botPreset() })
+    const { sessionId } = await ctx.sessionController.create({ ...place, ...await botPreset(self, main) })
     const agent = await rt.resolveAgent(sessionId)
     await ctx.sessionTitle.rename(agent.session, title)
     return sessionId
@@ -205,7 +213,7 @@ export function install(rt) {
     const clash = dir === undefined ? undefined : await rt.privateClash(dir)
     if (clash) throw new Error(`${dir} is in or around the folder of ${clash.name}, a private Bot, so ${cleanName} cannot work there`)
     if (!main && (section !== undefined || sectionId !== undefined)) resolveSectionInput({ section, sectionId }, { allowCreate: false })
-    const id = await createSession(cleanName, { dir })
+    const id = await createSession(cleanName, { dir, main: main === true })
     try {
       const resolvedSecId = !main ? resolveSectionInput({ section, sectionId }) : undefined
       state.bots[id] = {

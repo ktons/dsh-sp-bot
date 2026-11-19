@@ -51,6 +51,10 @@ MIT License, Copyright (c) 2026 DeepSeek
     app/engine/preset-standard.patch.yml copies its standard preset
     (presets/standard.patch.yml), including the plan-mode prompt text,
     without the goal rows.
+  - ds-bot/src/host/prompt.js registers two agent presets whose rows copy the
+    standard preset (presets/standard.patch.yml of @deepseek-ai/dsh-web-app),
+    including the plan-mode prompt text, with the persona row replaced so it
+    carries the Bot team rules.
   - .agents/skills/record-browser-gif/ comes from the skill of the same name
     in DeepSeek Harness (.agents/skills/record-browser-gif/): SKILL.md is
     adapted and translated for this repository; scripts/encode_gif.py and
