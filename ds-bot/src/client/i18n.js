@@ -1834,6 +1834,21 @@ const HOST_ZH = {
   'Stop {name}': '停止 {name}',
   '{name} · foreground': '{name} · 前台',
   '{name} waits for the computer': '{name} 等你停手',
+  // Supervisor Bot and lanes
+  'Supervisor': '监督 Bot',
+  'Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.': '管理工作区、向其中派发 lane，并盯着每个 lane 完成，省得你亲自盯。',
+  'Ask {name} to dispatch a lane here': '让 {name} 在这里派发 lane',
+  'New lane…': '新建 lane…',
+  'Lane actions': 'Lane 操作',
+  'Stop lane': '停止 lane',
+  'Release lane': '解除 lane',
+  'Asking': '等回复',
+  'Managed workspaces': '托管的工作区',
+  'Add a workspace': '添加工作区',
+  'A folder the Supervisor may dispatch lanes into.': '监督 Bot 可以向其中派发 lane 的文件夹。',
+  'Alias': '别名',
+  'e.g. web': '如 web',
+  'Its playbook. It loads this skill before it answers a lane or reports.': '它的 playbook。在回答 lane 或收到汇报前，它会先加载这个 skill。',
 }
 Object.assign(ZH, HOST_ZH)
 

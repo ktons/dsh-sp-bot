@@ -3,7 +3,7 @@ import { isMuted, toggleMuted } from './notifications.js'
 import { inkFill } from './inks.js'
 import { isMainOf } from './sources.js'
 import { currentPart } from './text.js'
-import { GearIcon, PinIcon, UnreadIcon, PencilIcon, StarLineIcon, CopyIcon, HideIcon, TrashIcon, DuplicateIcon, FolderIcon, PlusIcon, CheckIcon, PeopleIcon, SignOutIcon } from './icons.js'
+import { GearIcon, PinIcon, UnreadIcon, PencilIcon, StarLineIcon, CopyIcon, HideIcon, TrashIcon, DuplicateIcon, FolderIcon, PlusIcon, CheckIcon, PeopleIcon, SignOutIcon, StopIcon } from './icons.js'
 import { BotMark, RoomAvatar } from './mark.js'
 import { useEscape } from './overlay-hooks.js'
 import { stepMenuFocus, useViewport, viewBottom } from './motion.js'
@@ -48,6 +48,7 @@ export function ContextMenu({ menu, roster, actions, useWork, leaving = false })
     setPlace({ left: Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(menu.y, viewBottom() - box.height - 8)) })
   }, [menu.x, menu.y, tick])
   if (menu.kind === 'agent' || menu.kind === 'agent-session') return h(AgentMenu, { menu, roster, actions, leaving })
+  if (menu.kind === 'lane') return h(LaneMenu, { menu, actions, leaving })
   if (menu.kind === 'section' || menu.kind === 'section-add') return h(SectionMenu, { menu, roster, actions, leaving })
   const bot = roster.byId[menu.id]
   const room = roster.roomsById[menu.id]
@@ -180,6 +181,34 @@ function SectionMenu({ menu, roster, actions, leaving }) {
       type: 'button', role: 'menuitem', className: 'bt-danger',
       onClick: () => { actions.closeMenu(); void Promise.resolve(actions.deleteSection(sec.id)).catch(error => actions.reportError(error, 'menu')) },
     }, h(TrashIcon), h('span', { className: 'bt-menu-label' }, t('Ungroup section'))))
+}
+
+// A lane's menu: the user stops it or takes it back out of supervision. The
+// Supervisor Bot supervises; these are the user's own levers on the lane.
+function LaneMenu({ menu, actions, leaving }) {
+  const ref = useRef(null)
+  const trigger = useRef(typeof document === 'undefined' ? null : document.activeElement)
+  useEffect(() => {
+    const onKey = (event) => { stepMenuFocus(ref.current, event, trigger.current) }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+  const [place, setPlace] = useState({ left: menu.x, top: menu.y })
+  const tick = useViewport()
+  useLayoutEffect(() => {
+    const box = ref.current?.getBoundingClientRect()
+    if (!box) return
+    setPlace({ left: Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(menu.y, viewBottom() - box.height - 8)) })
+  }, [menu.x, menu.y, tick])
+  return h('div', { ref, className: 'bt-menu', role: 'menu', 'aria-label': t('Lane actions'), style: place, 'data-leaving': leaving || undefined },
+    h('button', {
+      type: 'button', role: 'menuitem',
+      onClick: () => { actions.closeMenu(); void Promise.resolve(actions.stopLane(menu.id)).catch(error => actions.reportError(error, 'lane')) },
+    }, h(StopIcon), h('span', { className: 'bt-menu-label' }, t('Stop lane'))),
+    h('button', {
+      type: 'button', role: 'menuitem', className: 'bt-danger',
+      onClick: () => { actions.closeMenu(); void Promise.resolve(actions.releaseLane(menu.id)).catch(error => actions.reportError(error, 'lane')) },
+    }, h(SignOutIcon), h('span', { className: 'bt-menu-label' }, t('Release lane'))))
 }
 
 // Menus for the DSH Agent row and its Sessions; none of the Bot entries apply.

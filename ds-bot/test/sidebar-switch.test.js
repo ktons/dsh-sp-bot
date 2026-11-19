@@ -17,7 +17,7 @@ const { JSDOM } = createRequire(join(process.env.DSH_HARNESS ?? join(PLUGIN, '..
 // fixtures retain refs across commits and run their layout effects after each render.
 const { outputFiles } = await build({
   stdin: {
-    contents: "export { SHELL_CSS } from './src/client/styles.js'\nexport { SIDEBAR_CSS, TeamSidebar, PluginsButton } from './src/client/sidebar.js'\nexport { dshCollapsed, installFrameWatch } from './src/client/frame-watch.js'",
+    contents: "export { SHELL_CSS } from './src/client/styles.js'\nexport { SIDEBAR_CSS, TeamSidebar, PluginsButton, laneGroupsOf } from './src/client/sidebar.js'\nexport { dshCollapsed, installFrameWatch } from './src/client/frame-watch.js'",
     resolveDir: PLUGIN,
   },
   bundle: true, format: 'cjs', platform: 'browser', write: false, logLevel: 'silent',
@@ -60,7 +60,7 @@ const sandbox = {
   window: viewport,
 }
 runInNewContext(outputFiles[0].text, sandbox)
-const { SHELL_CSS, SIDEBAR_CSS, TeamSidebar, PluginsButton, dshCollapsed, installFrameWatch } = module.exports
+const { SHELL_CSS, SIDEBAR_CSS, TeamSidebar, PluginsButton, laneGroupsOf, dshCollapsed, installFrameWatch } = module.exports
 
 function navigationSidebar(wide, { leftDrawer = false } = {}) {
   const calls = []
@@ -739,6 +739,34 @@ test('dshCollapsed detects collapsed ancestors in both DSH Web and DSH Desktop l
       assert.equal(dshCollapsed(), false, `${name} expanded`)
     })
   }
+})
+
+// The Supervisors' workspaces extend the plain-Session area: one group per workspace
+// that has lanes, newest lane first, orphans under the folder's own name.
+test('laneGroupsOf groups lanes under managed workspaces and keeps orphans visible', () => {
+  const roster = {
+    ready: true,
+    bots: [
+      { id: 'sp', kind: 'supervisor', name: 'Foreman', managed: [{ path: '/proj', alias: 'web' }, { path: '/api', alias: 'api' }] },
+      { id: 'm', name: 'Chief' },
+    ],
+    lanes: [
+      { id: 'l1', spBotId: 'sp', workspacePath: '/proj', title: 'refactor', status: 'working', createdAt: 3 },
+      { id: 'l2', spBotId: 'sp', workspacePath: '/elsewhere', title: 'orphan', status: 'idle', createdAt: 2 },
+      { id: 'l3', spBotId: 'sp', workspacePath: '/api', title: 'docs', status: 'done', createdAt: 4 },
+      { id: 'l5', spBotId: 'sp', workspacePath: '/proj', title: 'newer', status: 'idle', createdAt: 6 },
+      { id: 'l4', spBotId: 'm', workspacePath: '/proj', title: 'not mine', status: 'idle', createdAt: 9 },
+    ],
+  }
+  const groups = laneGroupsOf(roster)
+  // The bundle runs in a vm realm, so its arrays compare by string, not deepEqual.
+  assert.equal(groups.map(group => `${group.alias}@${group.path}`).join(','), 'web@/proj,api@/api,null@/elsewhere')
+  assert.equal(groups[0].lanes.map(lane => lane.id).join(','), 'l5,l1')
+  assert.equal(groups[2].lanes.map(lane => lane.id).join(','), 'l2')
+  // Another Bot's lanes never land in a Supervisor's groups, and a Supervisor with
+  // no lanes shows none.
+  assert.equal(groups.some(group => group.lanes.some(lane => lane.id === 'l4')), false)
+  assert.equal(laneGroupsOf({ ready: true, bots: [{ id: 'sp', kind: 'supervisor', managed: [{ path: '/proj', alias: 'web' }] }], lanes: [] }).length, 0)
 })
 
 test('installFrameWatch tracks data-sidebar-collapsed on DSH Desktop ancestor frame', async () => {

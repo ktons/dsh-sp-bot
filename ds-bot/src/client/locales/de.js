@@ -1755,6 +1755,21 @@ export const DE = {
   "Open this running session": "Diese laufende Sitzung öffnen",
   "A running session keeps using model calls in the background.": "Eine laufende Sitzung verbraucht weiterhin Modellaufrufe im Hintergrund.",
   "This session is still running. Wait for it to finish, or stop it.": "Diese Sitzung läuft noch. Warte, bis sie endet, oder stoppe sie.",
+  // Supervisor-Bot und Lanes
+  'Supervisor': 'Supervisor',
+  'Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.': 'Verwaltet Arbeitsbereiche, startet Lanes darin und behält im Auge, wie jeder einzelne abschließt – ganz ohne dein Zutun.',
+  'Ask {name} to dispatch a lane here': '{name} bitten, hier eine Lane zu starten',
+  'New lane…': 'Neue Lane …',
+  'Lane actions': 'Lane-Aktionen',
+  'Stop lane': 'Lane stoppen',
+  'Release lane': 'Lane freigeben',
+  'Asking': 'Fragt nach',
+  'Managed workspaces': 'Verwaltete Arbeitsbereiche',
+  'Add a workspace': 'Arbeitsbereich hinzufügen',
+  'A folder the Supervisor may dispatch lanes into.': 'Ein Ordner, in den der Supervisor Lanes starten darf.',
+  'Alias': 'Alias',
+  'e.g. web': 'z. B. web',
+  'Its playbook. It loads this skill before it answers a lane or reports.': 'Sein Playbook. Es lädt diesen Skill, bevor es einer Lane antwortet oder einen Bericht entgegennimmt.',
 }
 
 export const HOST_ERRORS_DE = [

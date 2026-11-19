@@ -1720,6 +1720,21 @@ export const JA = {
   "Open this running session": "実行中のセッションを開く",
   "A running session keeps using model calls in the background.": "実行中のセッションはバックグラウンドでモデル呼び出しを続けます。",
   "This session is still running. Wait for it to finish, or stop it.": "このセッションはまだ実行中です。終了を待つか、停止してください。",
+  // スーパーバイザー Bot とレーン
+  "Supervisor": "スーパーバイザー",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "ワークスペースを管理し、そこにレーンを投入し、それぞれの完了を見届けます。あなたが見張る必要はありません。",
+  "Ask {name} to dispatch a lane here": "{name} にここでレーンを投入するよう依頼",
+  "New lane…": "新しいレーン…",
+  "Lane actions": "レーンの操作",
+  "Stop lane": "レーンを停止",
+  "Release lane": "レーンを解放",
+  "Asking": "確認中",
+  "Managed workspaces": "管理中のワークスペース",
+  "Add a workspace": "ワークスペースを追加",
+  "A folder the Supervisor may dispatch lanes into.": "スーパーバイザーがレーンを投入できるフォルダーです。",
+  "Alias": "別名",
+  "e.g. web": "例: web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "プレイブックです。レーンに答えたり報告を受けたりする前に、このスキルを読み込みます。",
 }
 
 export const HOST_ERRORS_JA = [

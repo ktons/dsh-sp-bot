@@ -16,7 +16,7 @@ export function createSource(initial) {
   }
 }
 
-export const EMPTY_ROSTER = { revision: -1, mainBotId: null, mainBotIds: [], bots: [], rooms: [], agents: [], sections: [], exchangeTurns: {}, questions: {}, btwCards: {}, sideChats: {}, learning: {}, secrets: [], capabilities: [], capabilityStatuses: {}, phone: null, secretRequests: {}, models: [], defaultModel: null, modelsKey: null, prefs: {}, byId: {}, roomsById: {}, agentsById: {}, agentOf: {}, ready: false }
+export const EMPTY_ROSTER = { revision: -1, mainBotId: null, mainBotIds: [], bots: [], rooms: [], agents: [], sections: [], lanes: [], exchangeTurns: {}, questions: {}, btwCards: {}, sideChats: {}, learning: {}, secrets: [], capabilities: [], capabilityStatuses: {}, phone: null, secretRequests: {}, models: [], defaultModel: null, modelsKey: null, prefs: {}, byId: {}, roomsById: {}, agentsById: {}, agentOf: {}, lanesById: {}, ready: false }
 // Any Main Bot holds the Main Bot powers; `mainBotId`, the first one, is the sidebar tile.
 export const isMainOf = (roster, id) => id !== undefined && (roster.mainBotIds ?? []).includes(id)
 
@@ -44,7 +44,11 @@ export function indexRoster(value) {
     agentsById[agent.id] = agent
     for (const sessionId of agent.sessions ?? []) agentOf[sessionId] = agent.id
   }
-  return { ...value, agents: value.agents ?? [], sections: value.sections ?? [], byId, roomsById, agentsById, agentOf, ready: true }
+  // A lane is a plain Session a Supervisor Bot watches; its id finds the lane record.
+  const lanes = value.lanes ?? []
+  const lanesById = {}
+  for (const lane of lanes) lanesById[lane.id] = lane
+  return { ...value, agents: value.agents ?? [], sections: value.sections ?? [], lanes, byId, roomsById, agentsById, agentOf, lanesById, ready: true }
 }
 
 // Whether a main-view Session id belongs to the team's DSH Agent: the conversation
