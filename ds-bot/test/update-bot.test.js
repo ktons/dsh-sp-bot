@@ -32,7 +32,8 @@ let rt
 function start(team = TEAM) {
   const home = mkdtempSync(join(tmpdir(), 'ds-bot-update-'))
   if (!existsSync(join(home, 'state.json'))) writeFileSync(join(home, 'state.json'), JSON.stringify(team))
-  const ctx = fakeContext()
+  const registered = new Map()
+  const ctx = fakeContext({ services: { agentPresets: { register: async (definition) => { registered.set(definition.id, definition); return async () => {} } } } })
   const sent = []
   Object.assign(ctx, {
     llm: {
@@ -59,7 +60,7 @@ function start(team = TEAM) {
     await ctx.dispose()
     rmSync(home, { recursive: true, force: true, maxRetries: 5 })
   }
-  return { ctx, tool, call, state, sent, stop }
+  return { ctx, registered, tool, call, state, sent, stop }
 }
 
 test('a Bot changes itself by leaving out bot, or by naming itself', async (t) => {
@@ -92,14 +93,13 @@ test('a group Session changes its own Bot; a Session outside the team changes no
   assert.equal(await tool('update_bot', { name: 'King' }, 'stranger'), 'Only Bots on the team can use update_bot.')
 })
 
-test('every Bot sees the update_bot rule in its identity section', async (t) => {
-  const { ctx, tool, stop } = start()
+test('every Bot sees the update_bot rule in its preset persona', async (t) => {
+  const { registered, stop } = start()
   t.after(stop)
-  // The first load indexes the Sessions; without it selfOf finds no Bot.
-  await tool('list_bots', {}, 'b2')
-  const text = ctx.sections.get('bot-identity').text({ agent: { id: 'b2' } })
-  assert.match(text, /update_bot changes your own settings/)
-  assert.match(ctx.sections.get('bot-identity').text({ agent: { id: 'm1' } }), /update_bot changes your own settings/)
+  for (const id of ['ds-bot-main', 'ds-bot-team']) {
+    const prefix = registered.get(id).plugins.find(row => row.id === 'persona').config.prefix
+    assert.match(prefix, /update_bot changes your own settings/)
+  }
 })
 
 test('an instructions change lands as a message in the Bot chat', async (t) => {

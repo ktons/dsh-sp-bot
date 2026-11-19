@@ -1271,7 +1271,7 @@ export function install(rt) {
     if (signal.aborted) throw signal.reason
     const dir = rt.workDirOf(job)
     const intended = dir !== undefined && await rt.isFolder(dir) ? dir : rt.teamFolder()
-    const freshId = await rt.createSession(room === undefined ? name : bot === undefined ? room.name : `${name} · ${room.name}`, { dir })
+    const freshId = await rt.createSession(room === undefined ? name : bot === undefined ? room.name : `${name} · ${room.name}`, { dir, ...(bot !== undefined ? { self: bot.id } : {}) })
     // The group's own Session never asks the model, so it takes the team's default; the
     // earlier part's route may be one DSH no longer serves (#1310).
     if (bot === undefined) await rt.selectRoomSession(freshId)
@@ -2035,7 +2035,7 @@ export function install(rt) {
   // turn. It keeps its own earlier parts with it (threads.js).
   async function openPartNow(bot, agent) {
     const dir = rt.workDirOf({ botId: bot.id })
-    const freshId = await rt.createSession(bot.name, { dir })
+    const freshId = await rt.createSession(bot.name, { dir, self: bot.id })
     const picked = await freshRoute(bot, agent.session)
     if (picked !== undefined) await selectRoute({ name: bot.name }, freshId, picked)
     await rt.applyPermission(bot, freshId, undefined)
