@@ -202,6 +202,13 @@ test('the client channel answers from the saved state', async (t) => {
   assert.equal('enterToSend' in (await call('set-prefs', { enterToSend: true })).value, false)
   await call('set-prefs', { enterToSend: false })
   assert.equal('enterToSend' in (await call('set-prefs', { enterToSend: null })).value, false)
+  // The transcript renderer keeps only minimal (the default) and dsh.
+  assert.equal('transcript' in (await call('set-prefs', {})).value, false)
+  assert.equal((await call('set-prefs', { transcript: 'dsh' })).value.transcript, 'dsh')
+  assert.equal('transcript' in (await call('set-prefs', { transcript: 'minimal' })).value, false)
+  assert.equal((await call('set-prefs', { transcript: 'dsh' })).value.transcript, 'dsh')
+  assert.equal('transcript' in (await call('set-prefs', { transcript: null })).value, false)
+  assert.deepEqual((await call('set-prefs', { transcript: 'verbose' })).error, { code: 'bot/invalid', message: 'Transcript must be minimal or dsh', details: {} })
   // A refusal from the team code keeps its message for the user.
   assert.deepEqual((await call('delete-bot', { id: 'nobody' })).error, { code: 'bot/refused', message: 'Unknown Bot', details: {} })
   // Off the Desktop profile there are no Bot browsers.

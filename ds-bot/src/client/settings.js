@@ -1,7 +1,7 @@
 import { Component, createElement as h, useCallback, useEffect, useRef, useState } from 'react'
 import { ACCENT_INKS, INKS } from './inks.js'
 import { isMainOf } from './sources.js'
-import { MESSAGE_WIDTH, allThemes, effectsOf, flatWidthOf, layoutOf, thinkingShown, widthOf } from './themes.js'
+import { MESSAGE_WIDTH, allThemes, effectsOf, flatWidthOf, layoutOf, nativeTranscript, thinkingShown, widthOf } from './themes.js'
 import { CloseIcon, ChevronLeftIcon, ChevronRightIcon, ChatsIcon, ClockIcon, ConnectorIcon, GlobeIcon, InfoIcon, MonitorIcon, PhoneIcon, PlugIcon, PlusIcon, SlidersIcon, TerminalIcon, SETTINGS_ICONS } from './icons.js'
 import { IconAgentPresetOutlineMedium, IconArchiveOutlineMedium, IconPersonalizationOutlineMedium, IconSettingsOutlineMedium, IconUserOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AdminStar, BotAvatar, RoomAvatar } from './mark.js'
@@ -79,6 +79,7 @@ function SetRow({ label, hint, children, className = '' }) {
 
 const LAYOUTS = [['bubble', 'Bubble'], ['flat', 'Flat']]
 const EFFECTS = [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'None']]
+const TRANSCRIPTS = [['minimal', 'Minimal'], ['dsh', 'DSH native']]
 
 function Choice({ label, value, options, pick }) {
   return h(Segmented, { label, value, className: 'bt-look-seg' }, options.map(([id, text]) => h('button', {
@@ -149,6 +150,7 @@ function GeneralPage({ roster, actions, run, dsh }) {
       h(SetRow, { label: t('Bubble width') }, h(WidthSlider, { label: t('Bubble width'), value: widthOf(prefs), save: width => run(actions.setPrefs({ width })) })),
       h(SetRow, { label: t('Interface motion') }, h(Choice, { label: t('Interface motion'), value: effectsOf(prefs), options: EFFECTS, pick: id => run(actions.setPrefs({ effects: id })) })),
       h(SetRow, { label: t('Show thinking') }, h(Switch, { label: t('Show thinking'), on: thinkingShown(prefs), onChange: thinking => run(actions.setPrefs({ thinking })) })),
+      h(SetRow, { label: t('Message rendering'), hint: t('DSH native shows every turn, including Bot-to-Bot exchanges and condensation notes') }, h(Choice, { label: t('Message rendering'), value: nativeTranscript(prefs) ? 'dsh' : 'minimal', options: TRANSCRIPTS, pick: id => run(actions.setPrefs({ transcript: id })) })),
       look.map(id => dshItem(dsh, id))),
     h(SetSection, { key: 'new', title: t('New Bots') },
       h(SetRow, { label: t('Default model'), className: 'bt-set-model' },

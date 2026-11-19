@@ -250,6 +250,14 @@ export function install(rt) {
       if (body.memoryAutoRecall === false) state.prefs.memoryAutoRecall = false
       else delete state.prefs.memoryAutoRecall
     }
+    if (body.transcript !== undefined) {
+      // The chat stream's renderer: ds-bot's own minimal cards, or DSH's native
+      // conversation. An unknown value is refused so a typo cannot flip every
+      // client's rendering.
+      if (body.transcript === null || body.transcript === 'minimal') delete state.prefs.transcript
+      else if (body.transcript === 'dsh') state.prefs.transcript = body.transcript
+      else throw invalid('Transcript must be minimal or dsh')
+    }
     if (body.memoryLimits !== undefined) {
       const sizes = Object.entries(body.memoryLimits ?? {}).filter(([scope, size]) => MEMORY_LIMIT_SCOPES.has(scope) && Number.isInteger(size) && size >= MEMORY_LIMIT_MIN && size <= MEMORY_LIMIT_MAX)
       if (sizes.length === 0) delete state.prefs.memoryLimits

@@ -128,5 +128,7 @@ const percent = (value, initial) => (Number.isInteger(value) && value >= MESSAGE
 export const layoutOf = prefs => (prefs?.layout === 'flat' ? 'flat' : 'bubble')
 export const effectsOf = prefs => (prefs?.effects === 'reduced' || prefs?.effects === 'off' ? prefs.effects : 'full')
 export const thinkingShown = prefs => prefs?.thinking === true
+// The chat stream renders with DSH's own conversation instead of ds-bot's cells.
+export const nativeTranscript = prefs => prefs?.transcript === 'dsh'
 export const widthOf = prefs => percent(prefs?.width, 80)
 export const flatWidthOf = prefs => percent(prefs?.flatWidth, 100)
