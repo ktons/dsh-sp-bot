@@ -1755,6 +1755,21 @@ export const KO = {
   "Open this running session": "실행 중인 세션 열기",
   "A running session keeps using model calls in the background.": "실행 중인 세션은 백그라운드에서 모델 호출을 계속 사용합니다.",
   "This session is still running. Wait for it to finish, or stop it.": "이 세션은 아직 실행 중입니다. 끝날 때까지 기다리거나 중지하세요.",
+  // 감독 봇과 레인
+  'Supervisor': '감독 봇',
+  'Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.': '워크스페이스를 관리하고 그 안에 레인을 보내며, 각 레인이 끝나는지 지켜봅니다. 일일이 보지 않아도 됩니다.',
+  'Ask {name} to dispatch a lane here': '{name}에게 여기에 레인 보내기 요청',
+  'New lane…': '새 레인…',
+  'Lane actions': '레인 동작',
+  'Stop lane': '레인 중지',
+  'Release lane': '레인 해제',
+  'Asking': '질문 중',
+  'Managed workspaces': '관리 중인 워크스페이스',
+  'Add a workspace': '워크스페이스 추가',
+  'A folder the Supervisor may dispatch lanes into.': '감독 봇이 레인을 보낼 수 있는 폴더입니다.',
+  'Alias': '별칭',
+  'e.g. web': '예: web',
+  'Its playbook. It loads this skill before it answers a lane or reports.': '플레이북입니다. 레인에 답하거나 보고를 받기 전에 이 스킬을 불러옵니다.',
 }
 
 export const HOST_ERRORS_KO = [

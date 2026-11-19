@@ -6,7 +6,7 @@ import { PencilIcon, ChevronRightIcon } from './icons.js'
 import { lookOf, BotMark } from './mark.js'
 import { ModelMenu, modelOf } from './model-menu.js'
 import { RunModeCard } from './agent-cards.js'
-import { FolderMenu } from './folder-menu.js'
+import { FolderMenu, folderName } from './folder-menu.js'
 import { BotSchedules } from './schedules.js'
 import { BotCapabilitiesCard } from './capability-settings.js'
 import { BotComputerCard } from './computer.js'
@@ -196,6 +196,53 @@ function MemoryCard({ bot, actions }) {
       h('span', { className: 'bt-mem-row-go' }, t('Manage'), h(ChevronRightIcon))))
 }
 
+// A Supervisor Bot's managed workspaces: the folders it may dispatch lanes into,
+// each with an optional alias the Bot and the sidebar use for it.
+function ManagedWorkspacesCard({ bot, actions, run }) {
+  const [picker, setPicker] = useState(null)
+  const [path, setPath] = useState('')
+  const [alias, setAlias] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { void Promise.resolve(actions.folders()).then(info => setPicker(info?.picker ?? null)).catch(() => {}) }, [])
+  const add = async () => {
+    if (path.trim() === '' || busy) return
+    setBusy(true)
+    const ok = await run(actions.spWorkspaceAdd(bot.id, path.trim(), alias.trim()))
+    setBusy(false)
+    if (!ok) return
+    setPath('')
+    setAlias('')
+  }
+  return h(Card, { title: t('Managed workspaces') },
+    (bot.managed ?? []).map(ws => h('div', { key: ws.path, className: 'bt-set-row bt-bs-row' },
+      h('span', { className: 'bt-set-copy' },
+        h('span', { className: 'bt-bs-label' }, ws.alias || folderName(ws.path)),
+        h('span', { className: 'bt-set-hint' }, ws.path)),
+      h('button', {
+        type: 'button', className: 'bt-soft bt-soft-sm', 'aria-label': t('Remove {name}', { name: ws.alias || folderName(ws.path) }),
+        onClick: () => run(actions.spWorkspaceRemove(bot.id, ws.path)),
+      }, t('Remove')))),
+    h('div', { className: 'bt-set-row bt-bs-row bt-bs-stack bt-managed-add' },
+      h('span', { className: 'bt-set-copy' },
+        h('span', { className: 'bt-bs-label' }, t('Add a workspace')),
+        h('span', { className: 'bt-set-hint' }, t('A folder the Supervisor may dispatch lanes into.'))),
+      h('div', { className: 'bt-managed-line' },
+        picker === 'native' ? h('button', {
+          type: 'button', className: 'bt-soft bt-soft-sm',
+          onClick: () => { void Promise.resolve(actions.folderPick()).then(picked => { if (picked) setPath(picked) }).catch(() => {}) },
+        }, t('Choose a folder…')) : null,
+        h('input', {
+          className: 'bt-managed-input', value: path, placeholder: t('Full path of a folder'), spellCheck: false,
+          'aria-label': t('Folder path'), onChange: event => setPath(event.target.value),
+        })),
+      h('div', { className: 'bt-managed-line' },
+        h('input', {
+          className: 'bt-managed-input bt-managed-alias', value: alias, placeholder: t('e.g. web'), maxLength: 40, spellCheck: false,
+          'aria-label': t('Alias'), onChange: event => setAlias(event.target.value),
+        }),
+        h('button', { type: 'button', className: 'bt-soft bt-soft-sm', disabled: busy || path.trim() === '', onClick: () => void add() }, t('Add')))))
+}
+
 // A Bot's settings as grouped cards: who it is (avatar, name, label), what it runs on
 // (model), what it does (instructions), its memory and tasks, its Main Bot role, its
 // sidebar place, and copies.
@@ -242,6 +289,7 @@ export function BotSettingsForm({ bot, roster, actions, run }) {
       h('div', { className: 'bt-set-row bt-bs-row' },
         h('span', { className: 'bt-set-copy' }, h('span', { className: 'bt-bs-label' }, t('Folder'))),
         h(FolderMenu, { value: bot.workDir, actions, run, onPick: workDir => save({ workDir }) }))),
+    bot.kind === 'supervisor' ? h(ManagedWorkspacesCard, { bot, actions, run }) : null,
     h(Card, { title: t('Privacy') },
       h(SwitchRow, {
         label: t('Private'),
@@ -251,7 +299,13 @@ export function BotSettingsForm({ bot, roster, actions, run }) {
         onChange: value => save({ private: value }),
       })),
     h(Card, { title: t('Instructions') },
-      h(Row, { label: t('What this Bot does'), hint: t('Its job on the team. Part of the Bot\'s system prompt.'), stack: true },
+      h(Row, {
+        label: t('What this Bot does'),
+        hint: bot.kind === 'supervisor'
+          ? t('Its playbook. It loads this skill before it answers a lane or reports.')
+          : t('Its job on the team. Part of the Bot\'s system prompt.'),
+        stack: true,
+      },
         h(InlineText, { label: t('Instructions'), value: bot.instructions, multiline: true, placeholder: t('What this Bot is responsible for…'), onSave: instructions => save({ instructions }) }))),
     h(BotCapabilitiesCard, { bot, roster, actions, run, Card, SwitchRow }),
     h(BotComputerCard, { bot, roster, actions, run, Card, Row }),
@@ -308,6 +362,14 @@ label.bt-bs-row{cursor:text}
 .bt-bs-danger .bt-bs-label{color:var(--bt-danger)}
 .bt-bs-danger[data-confirm]{background:color-mix(in srgb,var(--bt-danger) 8%,transparent)}
 .bt-bs-danger[data-confirm]:hover{background:color-mix(in srgb,var(--bt-danger) 12%,transparent)}
+/* A Supervisor's managed workspaces. */
+.bt-managed-add{gap:8px}
+.bt-managed-line{display:flex;align-items:center;gap:8px}
+.bt-managed-line .bt-soft{flex:none}
+.bt-managed-input{flex:1;min-width:0;height:30px;box-sizing:border-box;padding:0 8px;border:.5px solid var(--bt-line-2);border-radius:8px;background:none;color:var(--bt-ink);font:inherit;font-size:13px;outline:none}
+.bt-managed-input:focus{border-color:var(--bt-accent)}
+.bt-managed-input::placeholder{color:var(--bt-ink-3)}
+.bt-managed-alias{flex:0 1 140px}
 .bt-switch{position:relative;flex:none;width:36px;height:20px;padding:0;border:0;border-radius:999px;background:var(--bt-line-2);cursor:pointer;transition:background-color .2s ease}
 .bt-switch[aria-checked=true]{background:var(--bt-accent)}
 .bt-switch:disabled{opacity:.45;cursor:default}

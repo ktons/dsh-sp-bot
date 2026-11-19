@@ -8,6 +8,7 @@ import { useEscape } from './overlay-hooks.js'
 import { createPayload, freshBotName, startModel } from './bot-draft.js'
 import { ModelMenu, useAgentModels } from './model-menu.js'
 import { CliList, ReadingModels, RunModeSwitch, useLocalAgents } from './agent-cards.js'
+import { Segmented } from './motion.js'
 import { agentAvatar, modelsFor, routeOf } from './agent-routes.js'
 import { hostText, t } from './i18n.js'
 import { nameProblem } from '../shared/mentions.js'
@@ -26,6 +27,7 @@ export function CreateBot({ roster, actions, start, brief = '', onBack, canGoBac
   const [image, setImage] = useState(null)
   const [library, setLibrary] = useState(false)
   const [name, setName] = useState(start?.name ?? '')
+  const [kind, setKind] = useState('')
   const [mode, setMode] = useState('model')
   const [model, setModel] = useState(() => startModel(roster))
   const [agentModel, setAgentModel] = useState('')
@@ -52,7 +54,7 @@ export function CreateBot({ roster, actions, start, brief = '', onBack, canGoBac
     setError('')
     setBusy(true)
     try {
-      const bot = await actions.createBot(createPayload({ name: finalName, look, image, model: chosen, effort: local ? undefined : effort, brief, ownLook, sectionId: start?.sectionId }))
+      const bot = await actions.createBot(createPayload({ name: finalName, look, image, model: chosen, effort: local ? undefined : effort, brief, ownLook, sectionId: start?.sectionId, type: kind === 'supervisor' ? 'supervisor' : undefined }))
       onCreated(bot)
     } catch (failure) {
       setError(failure?.message ?? String(failure))
@@ -71,6 +73,12 @@ export function CreateBot({ roster, actions, start, brief = '', onBack, canGoBac
   const worn = local && chosen !== '' && !ownLook ? agentAvatar(routeOf(chosen))?.image : undefined
   const previewLook = image ? { ...look, image } : worn ? { ...look, image: worn } : look
   const card = h('div', { className: 'bt-create-card' },
+    h('div', { className: 'bt-field' },
+      h('span', { className: 'bt-field-label' }, t('Type')),
+      h(Segmented, { label: t('Type'), value: kind },
+        h('button', { type: 'button', 'aria-pressed': kind === '', onClick: () => setKind('') }, t('Bot')),
+        h('button', { type: 'button', 'aria-pressed': kind === 'supervisor', onClick: () => setKind('supervisor') }, t('Supervisor'))),
+      kind === 'supervisor' ? h('span', { className: 'bt-note' }, t('Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.')) : null),
     h(RunModeSwitch, { mode, setMode }),
     h('div', { className: 'bt-create-preview' },
       // The key remounts the mark, so every new pick plays the pop.

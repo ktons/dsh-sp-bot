@@ -1720,6 +1720,21 @@ export const FR = {
   "Open this running session": "Ouvrir cette session en cours",
   "A running session keeps using model calls in the background.": "Une session en cours continue d’utiliser des appels au modèle en arrière-plan.",
   "This session is still running. Wait for it to finish, or stop it.": "Cette session est toujours en cours. Attendez la fin ou arrêtez-la.",
+  // Supervisor Bot et lanes
+  "Supervisor": "Superviseur",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "Gère des espaces de travail, y envoie des lanes et surveille leur achèvement, pour vous épargner de le faire.",
+  "Ask {name} to dispatch a lane here": "Demander à {name} d’envoyer une lane ici",
+  "New lane…": "Nouvelle lane…",
+  "Lane actions": "Actions de la lane",
+  "Stop lane": "Arrêter la lane",
+  "Release lane": "Libérer la lane",
+  "Asking": "Demande",
+  "Managed workspaces": "Espaces de travail gérés",
+  "Add a workspace": "Ajouter un espace de travail",
+  "A folder the Supervisor may dispatch lanes into.": "Un dossier où le Superviseur peut envoyer des lanes.",
+  "Alias": "Alias",
+  "e.g. web": "p. ex. web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "Son livre de conduite. Il charge cette compétence avant de répondre à une lane ou de recevoir un rapport.",
 }
 
 export const HOST_ERRORS_FR = [

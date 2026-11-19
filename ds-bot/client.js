@@ -1843,7 +1843,22 @@ var JA = {
   "Open this session": "このセッションを開く",
   "Open this running session": "実行中のセッションを開く",
   "A running session keeps using model calls in the background.": "実行中のセッションはバックグラウンドでモデル呼び出しを続けます。",
-  "This session is still running. Wait for it to finish, or stop it.": "このセッションはまだ実行中です。終了を待つか、停止してください。"
+  "This session is still running. Wait for it to finish, or stop it.": "このセッションはまだ実行中です。終了を待つか、停止してください。",
+  // スーパーバイザー Bot とレーン
+  "Supervisor": "スーパーバイザー",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "ワークスペースを管理し、そこにレーンを投入し、それぞれの完了を見届けます。あなたが見張る必要はありません。",
+  "Ask {name} to dispatch a lane here": "{name} にここでレーンを投入するよう依頼",
+  "New lane…": "新しいレーン…",
+  "Lane actions": "レーンの操作",
+  "Stop lane": "レーンを停止",
+  "Release lane": "レーンを解放",
+  "Asking": "確認中",
+  "Managed workspaces": "管理中のワークスペース",
+  "Add a workspace": "ワークスペースを追加",
+  "A folder the Supervisor may dispatch lanes into.": "スーパーバイザーがレーンを投入できるフォルダーです。",
+  "Alias": "別名",
+  "e.g. web": "例: web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "プレイブックです。レーンに答えたり報告を受けたりする前に、このスキルを読み込みます。"
 };
 var HOST_ERRORS_JA = [
   [/^Could not reach the mail server at (.+)\. Check the server address\.$/, "メールサーバー $1 に接続できませんでした。サーバーアドレスを確認してください。"],
@@ -4307,7 +4322,22 @@ var KO = {
   "Open this session": "이 세션 열기",
   "Open this running session": "실행 중인 세션 열기",
   "A running session keeps using model calls in the background.": "실행 중인 세션은 백그라운드에서 모델 호출을 계속 사용합니다.",
-  "This session is still running. Wait for it to finish, or stop it.": "이 세션은 아직 실행 중입니다. 끝날 때까지 기다리거나 중지하세요."
+  "This session is still running. Wait for it to finish, or stop it.": "이 세션은 아직 실행 중입니다. 끝날 때까지 기다리거나 중지하세요.",
+  // 감독 봇과 레인
+  "Supervisor": "감독 봇",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "워크스페이스를 관리하고 그 안에 레인을 보내며, 각 레인이 끝나는지 지켜봅니다. 일일이 보지 않아도 됩니다.",
+  "Ask {name} to dispatch a lane here": "{name}에게 여기에 레인 보내기 요청",
+  "New lane…": "새 레인…",
+  "Lane actions": "레인 동작",
+  "Stop lane": "레인 중지",
+  "Release lane": "레인 해제",
+  "Asking": "질문 중",
+  "Managed workspaces": "관리 중인 워크스페이스",
+  "Add a workspace": "워크스페이스 추가",
+  "A folder the Supervisor may dispatch lanes into.": "감독 봇이 레인을 보낼 수 있는 폴더입니다.",
+  "Alias": "별칭",
+  "e.g. web": "예: web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "플레이북입니다. 레인에 답하거나 보고를 받기 전에 이 스킬을 불러옵니다."
 };
 var HOST_ERRORS_KO = [
   [/^Could not reach the mail server at (.+)\. Check the server address\.$/, "메일 서버 $1에 연결할 수 없습니다. 서버 주소를 확인하세요."],
@@ -6772,7 +6802,22 @@ var ES = {
   "Open this session": "Abrir esta sesión",
   "Open this running session": "Abrir esta sesión en ejecución",
   "A running session keeps using model calls in the background.": "Una sesión en ejecución sigue usando llamadas al modelo en segundo plano.",
-  "This session is still running. Wait for it to finish, or stop it.": "Esta sesión sigue en ejecución. Espera a que termine o detenla."
+  "This session is still running. Wait for it to finish, or stop it.": "Esta sesión sigue en ejecución. Espera a que termine o detenla.",
+  // Supervisor Bot y lanes
+  "Supervisor": "Supervisor",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "Gestiona espacios de trabajo, les envía lanes y vigila que cada uno termine, sin que tengas que hacerlo tú.",
+  "Ask {name} to dispatch a lane here": "Pedir a {name} que envíe un lane aquí",
+  "New lane…": "Nuevo lane…",
+  "Lane actions": "Acciones del lane",
+  "Stop lane": "Detener el lane",
+  "Release lane": "Liberar el lane",
+  "Asking": "Pregunta",
+  "Managed workspaces": "Espacios de trabajo gestionados",
+  "Add a workspace": "Añadir un espacio de trabajo",
+  "A folder the Supervisor may dispatch lanes into.": "Una carpeta donde el Supervisor puede enviar lanes.",
+  "Alias": "Alias",
+  "e.g. web": "p. ej., web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "Su libro de jugadas. Carga esta skill antes de responder a un lane o recibir un informe."
 };
 var HOST_ERRORS_ES = [
   [/^Could not reach the mail server at (.+)\. Check the server address\.$/, "No se pudo conectar con el servidor de correo en $1. Comprueba la dirección del servidor."],
@@ -9193,7 +9238,22 @@ var FR = {
   "Open this session": "Ouvrir cette session",
   "Open this running session": "Ouvrir cette session en cours",
   "A running session keeps using model calls in the background.": "Une session en cours continue d’utiliser des appels au modèle en arrière-plan.",
-  "This session is still running. Wait for it to finish, or stop it.": "Cette session est toujours en cours. Attendez la fin ou arrêtez-la."
+  "This session is still running. Wait for it to finish, or stop it.": "Cette session est toujours en cours. Attendez la fin ou arrêtez-la.",
+  // Supervisor Bot et lanes
+  "Supervisor": "Superviseur",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "Gère des espaces de travail, y envoie des lanes et surveille leur achèvement, pour vous épargner de le faire.",
+  "Ask {name} to dispatch a lane here": "Demander à {name} d’envoyer une lane ici",
+  "New lane…": "Nouvelle lane…",
+  "Lane actions": "Actions de la lane",
+  "Stop lane": "Arrêter la lane",
+  "Release lane": "Libérer la lane",
+  "Asking": "Demande",
+  "Managed workspaces": "Espaces de travail gérés",
+  "Add a workspace": "Ajouter un espace de travail",
+  "A folder the Supervisor may dispatch lanes into.": "Un dossier où le Superviseur peut envoyer des lanes.",
+  "Alias": "Alias",
+  "e.g. web": "p. ex. web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "Son livre de conduite. Il charge cette compétence avant de répondre à une lane ou de recevoir un rapport."
 };
 var HOST_ERRORS_FR = [
   [/^Could not reach the mail server at (.+)\. Check the server address\.$/, "Impossible de joindre le serveur de messagerie à l’adresse $1. Vérifiez l’adresse du serveur."],
@@ -11657,7 +11717,22 @@ var DE = {
   "Open this session": "Diese Sitzung öffnen",
   "Open this running session": "Diese laufende Sitzung öffnen",
   "A running session keeps using model calls in the background.": "Eine laufende Sitzung verbraucht weiterhin Modellaufrufe im Hintergrund.",
-  "This session is still running. Wait for it to finish, or stop it.": "Diese Sitzung läuft noch. Warte, bis sie endet, oder stoppe sie."
+  "This session is still running. Wait for it to finish, or stop it.": "Diese Sitzung läuft noch. Warte, bis sie endet, oder stoppe sie.",
+  // Supervisor-Bot und Lanes
+  "Supervisor": "Supervisor",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "Verwaltet Arbeitsbereiche, startet Lanes darin und behält im Auge, wie jeder einzelne abschließt – ganz ohne dein Zutun.",
+  "Ask {name} to dispatch a lane here": "{name} bitten, hier eine Lane zu starten",
+  "New lane…": "Neue Lane …",
+  "Lane actions": "Lane-Aktionen",
+  "Stop lane": "Lane stoppen",
+  "Release lane": "Lane freigeben",
+  "Asking": "Fragt nach",
+  "Managed workspaces": "Verwaltete Arbeitsbereiche",
+  "Add a workspace": "Arbeitsbereich hinzufügen",
+  "A folder the Supervisor may dispatch lanes into.": "Ein Ordner, in den der Supervisor Lanes starten darf.",
+  "Alias": "Alias",
+  "e.g. web": "z. B. web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "Sein Playbook. Es lädt diesen Skill, bevor es einer Lane antwortet oder einen Bericht entgegennimmt."
 };
 var HOST_ERRORS_DE = [
   [/^Could not reach the mail server at (.+)\. Check the server address\.$/, "Mailserver unter $1 nicht erreichbar. Bitte prüfe die Serveradresse."],
@@ -14187,7 +14262,22 @@ var HOST_ZH = {
   "You control the computer": "你在操控电脑",
   "Stop {name}": "停止 {name}",
   "{name} · foreground": "{name} · 前台",
-  "{name} waits for the computer": "{name} 等你停手"
+  "{name} waits for the computer": "{name} 等你停手",
+  // Supervisor Bot and lanes
+  "Supervisor": "监督 Bot",
+  "Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.": "管理工作区、向其中派发 lane，并盯着每个 lane 完成，省得你亲自盯。",
+  "Ask {name} to dispatch a lane here": "让 {name} 在这里派发 lane",
+  "New lane…": "新建 lane…",
+  "Lane actions": "Lane 操作",
+  "Stop lane": "停止 lane",
+  "Release lane": "解除 lane",
+  "Asking": "等回复",
+  "Managed workspaces": "托管的工作区",
+  "Add a workspace": "添加工作区",
+  "A folder the Supervisor may dispatch lanes into.": "监督 Bot 可以向其中派发 lane 的文件夹。",
+  "Alias": "别名",
+  "e.g. web": "如 web",
+  "Its playbook. It loads this skill before it answers a lane or reports.": "它的 playbook。在回答 lane 或收到汇报前，它会先加载这个 skill。"
 };
 Object.assign(ZH, HOST_ZH);
 var ZH_TW = convertDict(ZH);
@@ -14630,7 +14720,7 @@ function createSource(initial) {
     }
   };
 }
-var EMPTY_ROSTER = { revision: -1, mainBotId: null, mainBotIds: [], bots: [], rooms: [], agents: [], sections: [], exchangeTurns: {}, questions: {}, btwCards: {}, sideChats: {}, learning: {}, secrets: [], capabilities: [], capabilityStatuses: {}, phone: null, secretRequests: {}, models: [], defaultModel: null, modelsKey: null, prefs: {}, byId: {}, roomsById: {}, agentsById: {}, agentOf: {}, ready: false };
+var EMPTY_ROSTER = { revision: -1, mainBotId: null, mainBotIds: [], bots: [], rooms: [], agents: [], sections: [], lanes: [], exchangeTurns: {}, questions: {}, btwCards: {}, sideChats: {}, learning: {}, secrets: [], capabilities: [], capabilityStatuses: {}, phone: null, secretRequests: {}, models: [], defaultModel: null, modelsKey: null, prefs: {}, byId: {}, roomsById: {}, agentsById: {}, agentOf: {}, lanesById: {}, ready: false };
 var isMainOf = (roster, id) => id !== void 0 && (roster.mainBotIds ?? []).includes(id);
 function indexRoster(value) {
   const byId = {};
@@ -14648,7 +14738,10 @@ function indexRoster(value) {
     agentsById[agent.id] = agent;
     for (const sessionId of agent.sessions ?? []) agentOf[sessionId] = agent.id;
   }
-  return { ...value, agents: value.agents ?? [], sections: value.sections ?? [], byId, roomsById, agentsById, agentOf, ready: true };
+  const lanes = value.lanes ?? [];
+  const lanesById = {};
+  for (const lane of lanes) lanesById[lane.id] = lane;
+  return { ...value, agents: value.agents ?? [], sections: value.sections ?? [], lanes, byId, roomsById, agentsById, agentOf, lanesById, ready: true };
 }
 function isAgentSession(roster, cache, sessionId) {
   if (sessionId === void 0 || sessionId === null || sessionId === "") return false;
@@ -14841,6 +14934,9 @@ function teamActions({ call: call2, after, partFor, roster, ui: ui2, live, cards
     folderList: (path2) => call2("folder-list", { path: path2 ?? "" }),
     setTeamWorkspace: (path2) => after(call2("team-workspace", { path: path2 })),
     deleteBot: (id) => after(call2("delete-bot", { id })),
+    // A Supervisor Bot's managed workspaces; lanes hang off the sidebar actions instead.
+    spWorkspaceAdd: (botId, path2, alias) => after(call2("sp-workspace-add", { botId, path: path2, alias })),
+    spWorkspaceRemove: (botId, path2) => after(call2("sp-workspace-remove", { botId, workspace: path2 })),
     releasePrivate: (id) => after(call2("private-release", { id })),
     duplicateBot: (id) => after(call2("duplicate-bot", { id })),
     setPrefs: (prefs) => after(call2("set-prefs", prefs)),
@@ -17830,6 +17926,7 @@ var CalendarIcon = lineIcon(["M5.5 5h9A1.5 1.5 0 0 1 16 6.5v8a1.5 1.5 0 0 1-1.5 
 var ConnectorIcon = lineIcon(["M7 10a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z", "M18 10a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z", "M7 10h6"]);
 var SwitchIcon = lineIcon(["M4 7h9.5M10.5 3.5L14 7l-3.5 3.5", "M16 13H6.5M9.5 9.5L6 13l3.5 3.5"]);
 var SignOutIcon = lineIcon(["M8.5 17H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2.5", "M10 10h6.5", "M13.5 7l3 3-3 3"]);
+var StopIcon = lineIcon(["M7.5 7.5h5v5h-5z"]);
 var SignInIcon = lineIcon(["M11.5 3H14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2.5", "M3.5 10H10", "M7 7l3 3-3 3"]);
 var PaperclipIcon = lineIcon(["M15.5 9.5l-5.6 5.6a3.4 3.4 0 0 1-4.8-4.8l6.1-6.1a2.25 2.25 0 0 1 3.2 3.2l-6 6a1.1 1.1 0 0 1-1.6-1.6l5.5-5.5"]);
 var TextIcon = lineIcon(["M4 5h12", "M4 8.5h12", "M4 12h9", "M4 15.5h6"]);
@@ -23867,13 +23964,14 @@ function startModel(roster) {
   const usable = modelsFor(roster.models).filter((model) => model.needsKey !== true);
   return (usable.find((model) => model.ref === roster.prefs?.defaultBotModel) ?? usable.find((model) => model.ref === roster.defaultModel) ?? usable[0])?.ref ?? "";
 }
-function createPayload({ name, look, image, model, effort, brief, ownLook = false, sectionId }) {
+function createPayload({ name, look, image, model, effort, brief, ownLook = false, sectionId, type }) {
   const badge = !image && !ownLook && isLocalRoute(model) ? agentAvatar(String(model).split("/")[0]) : void 0;
   const payload = { name, color: look.color, avatar: image ? { shape: look.shape, image } : badge !== void 0 ? { shape: look.shape, image: badge.image } : { shape: look.shape } };
   if (model) payload.model = model;
   if (effort !== void 0) payload.effort = effort;
   if (brief) payload.brief = brief;
   if (sectionId) payload.sectionId = sectionId;
+  if (type) payload.type = type;
   return payload;
 }
 function avatarAfter(bot, target) {
@@ -25844,6 +25942,91 @@ function MemoryCard({ bot, actions }) {
     )
   );
 }
+function ManagedWorkspacesCard({ bot, actions, run: run2 }) {
+  const [picker, setPicker] = (0, import_react27.useState)(null);
+  const [path2, setPath] = (0, import_react27.useState)("");
+  const [alias, setAlias] = (0, import_react27.useState)("");
+  const [busy, setBusy] = (0, import_react27.useState)(false);
+  (0, import_react27.useEffect)(() => {
+    void Promise.resolve(actions.folders()).then((info) => setPicker(info?.picker ?? null)).catch(() => {
+    });
+  }, []);
+  const add = async () => {
+    if (path2.trim() === "" || busy) return;
+    setBusy(true);
+    const ok = await run2(actions.spWorkspaceAdd(bot.id, path2.trim(), alias.trim()));
+    setBusy(false);
+    if (!ok) return;
+    setPath("");
+    setAlias("");
+  };
+  return (0, import_react27.createElement)(
+    Card2,
+    { title: t("Managed workspaces") },
+    (bot.managed ?? []).map((ws) => (0, import_react27.createElement)(
+      "div",
+      { key: ws.path, className: "bt-set-row bt-bs-row" },
+      (0, import_react27.createElement)(
+        "span",
+        { className: "bt-set-copy" },
+        (0, import_react27.createElement)("span", { className: "bt-bs-label" }, ws.alias || folderName(ws.path)),
+        (0, import_react27.createElement)("span", { className: "bt-set-hint" }, ws.path)
+      ),
+      (0, import_react27.createElement)("button", {
+        type: "button",
+        className: "bt-soft bt-soft-sm",
+        "aria-label": t("Remove {name}", { name: ws.alias || folderName(ws.path) }),
+        onClick: () => run2(actions.spWorkspaceRemove(bot.id, ws.path))
+      }, t("Remove"))
+    )),
+    (0, import_react27.createElement)(
+      "div",
+      { className: "bt-set-row bt-bs-row bt-bs-stack bt-managed-add" },
+      (0, import_react27.createElement)(
+        "span",
+        { className: "bt-set-copy" },
+        (0, import_react27.createElement)("span", { className: "bt-bs-label" }, t("Add a workspace")),
+        (0, import_react27.createElement)("span", { className: "bt-set-hint" }, t("A folder the Supervisor may dispatch lanes into."))
+      ),
+      (0, import_react27.createElement)(
+        "div",
+        { className: "bt-managed-line" },
+        picker === "native" ? (0, import_react27.createElement)("button", {
+          type: "button",
+          className: "bt-soft bt-soft-sm",
+          onClick: () => {
+            void Promise.resolve(actions.folderPick()).then((picked) => {
+              if (picked) setPath(picked);
+            }).catch(() => {
+            });
+          }
+        }, t("Choose a folder…")) : null,
+        (0, import_react27.createElement)("input", {
+          className: "bt-managed-input",
+          value: path2,
+          placeholder: t("Full path of a folder"),
+          spellCheck: false,
+          "aria-label": t("Folder path"),
+          onChange: (event) => setPath(event.target.value)
+        })
+      ),
+      (0, import_react27.createElement)(
+        "div",
+        { className: "bt-managed-line" },
+        (0, import_react27.createElement)("input", {
+          className: "bt-managed-input bt-managed-alias",
+          value: alias,
+          placeholder: t("e.g. web"),
+          maxLength: 40,
+          spellCheck: false,
+          "aria-label": t("Alias"),
+          onChange: (event) => setAlias(event.target.value)
+        }),
+        (0, import_react27.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm", disabled: busy || path2.trim() === "", onClick: () => void add() }, t("Add"))
+      )
+    )
+  );
+}
 function BotSettingsForm({ bot, roster, actions, run: run2 }) {
   const [editing, setEditing] = (0, import_react27.useState)(false);
   const [editorShown, editorLeaving] = useLinger(editing, 120);
@@ -25920,6 +26103,7 @@ function BotSettingsForm({ bot, roster, actions, run: run2 }) {
         (0, import_react27.createElement)(FolderMenu, { value: bot.workDir, actions, run: run2, onPick: (workDir) => save({ workDir }) })
       )
     ),
+    bot.kind === "supervisor" ? (0, import_react27.createElement)(ManagedWorkspacesCard, { bot, actions, run: run2 }) : null,
     (0, import_react27.createElement)(
       Card2,
       { title: t("Privacy") },
@@ -25936,7 +26120,11 @@ function BotSettingsForm({ bot, roster, actions, run: run2 }) {
       { title: t("Instructions") },
       (0, import_react27.createElement)(
         Row,
-        { label: t("What this Bot does"), hint: t("Its job on the team. Part of the Bot's system prompt."), stack: true },
+        {
+          label: t("What this Bot does"),
+          hint: bot.kind === "supervisor" ? t("Its playbook. It loads this skill before it answers a lane or reports.") : t("Its job on the team. Part of the Bot's system prompt."),
+          stack: true
+        },
         (0, import_react27.createElement)(InlineText, { label: t("Instructions"), value: bot.instructions, multiline: true, placeholder: t("What this Bot is responsible for…"), onSave: (instructions) => save({ instructions }) })
       )
     ),
@@ -26017,6 +26205,14 @@ label.bt-bs-row{cursor:text}
 .bt-bs-danger .bt-bs-label{color:var(--bt-danger)}
 .bt-bs-danger[data-confirm]{background:color-mix(in srgb,var(--bt-danger) 8%,transparent)}
 .bt-bs-danger[data-confirm]:hover{background:color-mix(in srgb,var(--bt-danger) 12%,transparent)}
+/* A Supervisor's managed workspaces. */
+.bt-managed-add{gap:8px}
+.bt-managed-line{display:flex;align-items:center;gap:8px}
+.bt-managed-line .bt-soft{flex:none}
+.bt-managed-input{flex:1;min-width:0;height:30px;box-sizing:border-box;padding:0 8px;border:.5px solid var(--bt-line-2);border-radius:8px;background:none;color:var(--bt-ink);font:inherit;font-size:13px;outline:none}
+.bt-managed-input:focus{border-color:var(--bt-accent)}
+.bt-managed-input::placeholder{color:var(--bt-ink-3)}
+.bt-managed-alias{flex:0 1 140px}
 .bt-switch{position:relative;flex:none;width:36px;height:20px;padding:0;border:0;border-radius:999px;background:var(--bt-line-2);cursor:pointer;transition:background-color .2s ease}
 .bt-switch[aria-checked=true]{background:var(--bt-accent)}
 .bt-switch:disabled{opacity:.45;cursor:default}
@@ -29898,6 +30094,105 @@ function AgentRow({ agent, actions, useSessions, useSessionStatus, useUi, wide, 
     ) : null
   );
 }
+var LANE_LABELS = { working: "Working", asking: "Asking", blocked: "Blocked", idle: "Idle", done: "Done", stopped: "Stopped" };
+function LaneRow({ lane, actions, useSessions, useSessionStatus, index }) {
+  const bits = useSessions((list) => JSON.stringify({
+    running: list.byId[lane.id]?.running === true,
+    active: (list.byId[lane.id]?.retainedBy?.mainView ?? 0) > 0
+  }));
+  const live = useSessionStatus((map) => JSON.stringify({
+    running: map.get(lane.id)?.running === true,
+    approval: map.get(lane.id)?.pendingInteraction !== void 0
+  }));
+  const session = (0, import_react36.useMemo)(() => ({ ...JSON.parse(bits), ...JSON.parse(live) }), [bits, live]);
+  const status = session.approval ? "blocked" : lane.status;
+  const label = session.approval ? t("Waiting for your approval") : t(LANE_LABELS[lane.status] ?? "Idle");
+  return (0, import_react36.createElement)(
+    "button",
+    {
+      type: "button",
+      className: "bt-agent-sub-row",
+      "aria-current": session.active ? "page" : void 0,
+      "aria-label": `${lane.title}, ${label}`,
+      style: { "--i": index },
+      title: lane.task && lane.task !== lane.title ? lane.task : void 0,
+      onClick: () => actions.openAgentSession(lane.id),
+      onContextMenu: (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        actions.openMenu({ kind: "lane", id: lane.id, x: event.clientX, y: event.clientY });
+      }
+    },
+    (0, import_react36.createElement)("span", { className: "bt-lane-dot", "data-status": status, "data-run": session.running || void 0, "aria-hidden": true }),
+    (0, import_react36.createElement)("span", { className: "bt-agent-sub-title" }, lane.title),
+    (0, import_react36.createElement)("span", { className: "bt-lane-status" }, label)
+  );
+}
+function laneGroupsOf(roster) {
+  const groups = [];
+  for (const sp of roster.bots) {
+    if (sp.kind !== "supervisor") continue;
+    const rest = (roster.lanes ?? []).filter((lane) => lane.spBotId === sp.id);
+    if (rest.length === 0) continue;
+    const managed = new Map((sp.managed ?? []).map((ws) => [ws.path, ws.alias]));
+    const seen = /* @__PURE__ */ new Map();
+    const leftover = [];
+    for (const lane of rest) {
+      const alias = managed.get(lane.workspacePath);
+      if (alias === void 0) {
+        leftover.push(lane);
+        continue;
+      }
+      if (!seen.has(alias)) {
+        seen.set(alias, { sp, alias, path: lane.workspacePath, lanes: [] });
+        groups.push(seen.get(alias));
+      }
+      seen.get(alias).lanes.push(lane);
+    }
+    for (const lane of leftover) {
+      const key = `path:${lane.workspacePath}`;
+      if (!seen.has(key)) {
+        seen.set(key, { sp, alias: null, path: lane.workspacePath, lanes: [] });
+        groups.push(seen.get(key));
+      }
+      seen.get(key).lanes.push(lane);
+    }
+  }
+  for (const group of groups) group.lanes.sort((a, b) => b.createdAt - a.createdAt);
+  return groups;
+}
+function LaneGroups({ roster, actions, useSessions, useSessionStatus }) {
+  const groups = (0, import_react36.useMemo)(() => laneGroupsOf(roster), [roster]);
+  if (groups.length === 0) return null;
+  return (0, import_react36.createElement)(import_react36.Fragment, null, groups.map((group) => (0, import_react36.createElement)(
+    "div",
+    { key: `${group.sp.id}:${group.alias ?? group.path}`, className: "bt-lanegroup" },
+    (0, import_react36.createElement)(
+      "div",
+      { className: "bt-lanegroup-head", title: group.path },
+      (0, import_react36.createElement)("span", { className: "bt-lanegroup-mark", "aria-hidden": true }, (0, import_react36.createElement)(FolderIcon)),
+      (0, import_react36.createElement)("span", { className: "bt-lanegroup-name" }, group.alias ?? folderName(group.path)),
+      (0, import_react36.createElement)("span", { className: "bt-lanegroup-sp" }, group.sp.name),
+      (0, import_react36.createElement)("span", { className: "bt-lanegroup-count" }, group.lanes.length)
+    ),
+    (0, import_react36.createElement)(
+      "div",
+      { className: "bt-agent-sub", "data-open": "true" },
+      (0, import_react36.createElement)(
+        "div",
+        { className: "bt-agent-sub-in" },
+        group.lanes.map((lane, index) => (0, import_react36.createElement)(LaneRow, { key: lane.id, lane, actions, useSessions, useSessionStatus, index })),
+        (0, import_react36.createElement)("button", {
+          type: "button",
+          className: "bt-agent-sub-row bt-agent-new",
+          style: { "--i": group.lanes.length },
+          title: t("Ask {name} to dispatch a lane here", { name: group.sp.name }),
+          onClick: () => actions.openSession(group.sp.id)
+        }, (0, import_react36.createElement)(PlusIcon), (0, import_react36.createElement)("span", { className: "bt-agent-sub-title" }, t("New lane…")))
+      )
+    )
+  )));
+}
 function renderSidebarEntry(entry, rowProps, markedUnread, onDragStart) {
   return entry.kind === "bot" ? (0, import_react36.createElement)(BotRow, { key: entry.item.id, ...rowProps, bot: entry.item, marked: markedUnread[entry.item.id] === true, onDragStart }) : entry.kind === "room" ? (0, import_react36.createElement)(RoomRow, { key: entry.item.id, ...rowProps, room: entry.item, marked: markedUnread[entry.item.id] === true, onDragStart }) : (0, import_react36.createElement)(AgentRow, { key: entry.item.id, ...rowProps, agent: entry.item, marked: markedUnread[entry.item.id] === true, onDragStart });
 }
@@ -30509,7 +30804,8 @@ function TeamSidebar(props) {
         onDragStart,
         onDragOverSec,
         onDropSec
-      }))
+      })),
+      wideContent ? (0, import_react36.createElement)(LaneGroups, { roster, actions, useSessions, useSessionStatus: props.useSessionStatus }) : null
     ),
     foot
   );
@@ -31023,6 +31319,21 @@ var SIDEBAR_CSS = `
 .bt-agent-sub[data-open] .bt-agent-sub-row{animation:bt-agent-row-in .24s ease both;animation-delay:calc(var(--i, 0)*30ms)}
 @keyframes bt-agent-row-in{from{opacity:0;filter:var(--bt-fx-blur-4,blur(4px))}to{opacity:1;filter:none}}
 @media (prefers-reduced-motion:reduce){.bt-agent-sub{transition:none}.bt-agent-sub .bt-agent-sub-row{animation:none}}
+/* Supervisors' managed workspaces and their lanes, under the plain-Session rows. */
+.bt-lanegroup{margin-top:4px}
+.bt-lanegroup-head{display:flex;align-items:center;gap:8px;padding:10px 10px 4px 8px;font-size:12px;line-height:16px}
+.bt-lanegroup-mark{display:inline-flex;flex:none;color:var(--bt-ink-3)}
+.bt-lanegroup-mark svg{width:13px;height:13px}
+.bt-lanegroup-name{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--bt-ink)}
+.bt-lanegroup-sp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3)}
+.bt-lanegroup-count{flex:none;color:var(--bt-ink-3)}
+.bt-lane-dot{flex:none;width:7px;height:7px;border-radius:999px;background:var(--bt-ink-3)}
+.bt-lane-dot[data-status=working]{background:var(--bt-green)}
+.bt-lane-dot[data-status=done]{background:var(--bt-green)}
+.bt-lane-dot[data-status=asking],.bt-lane-dot[data-status=blocked]{background:var(--bt-warn)}
+.bt-lane-dot[data-run]{animation:bt-agent-pulse 1.4s ease-in-out infinite}
+.bt-lane-status{flex:none;font-size:11px;line-height:16px;color:var(--bt-ink-3)}
+@media (prefers-reduced-motion:reduce){.bt-lane-dot[data-run]{animation:none}}
 
 /* Sidebar sections: collapsible header with a 3D character pile and live status when
    folded, active conversation peek, drag-and-drop highlight, and 88px rail cluster. */
@@ -31474,6 +31785,7 @@ function CreateBot({ roster, actions, start, brief = "", onBack, canGoBack, onCr
   const [image, setImage] = (0, import_react39.useState)(null);
   const [library, setLibrary] = (0, import_react39.useState)(false);
   const [name, setName] = (0, import_react39.useState)(start?.name ?? "");
+  const [kind, setKind] = (0, import_react39.useState)("");
   const [mode, setMode] = (0, import_react39.useState)("model");
   const [model, setModel] = (0, import_react39.useState)(() => startModel(roster));
   const [agentModel, setAgentModel] = (0, import_react39.useState)("");
@@ -31501,7 +31813,7 @@ function CreateBot({ roster, actions, start, brief = "", onBack, canGoBack, onCr
     setError("");
     setBusy(true);
     try {
-      const bot = await actions.createBot(createPayload({ name: finalName, look, image, model: chosen, effort: local ? void 0 : effort, brief, ownLook, sectionId: start?.sectionId }));
+      const bot = await actions.createBot(createPayload({ name: finalName, look, image, model: chosen, effort: local ? void 0 : effort, brief, ownLook, sectionId: start?.sectionId, type: kind === "supervisor" ? "supervisor" : void 0 }));
       onCreated(bot);
     } catch (failure) {
       setError(failure?.message ?? String(failure));
@@ -31522,6 +31834,18 @@ function CreateBot({ roster, actions, start, brief = "", onBack, canGoBack, onCr
   const card = (0, import_react39.createElement)(
     "div",
     { className: "bt-create-card" },
+    (0, import_react39.createElement)(
+      "div",
+      { className: "bt-field" },
+      (0, import_react39.createElement)("span", { className: "bt-field-label" }, t("Type")),
+      (0, import_react39.createElement)(
+        Segmented,
+        { label: t("Type"), value: kind },
+        (0, import_react39.createElement)("button", { type: "button", "aria-pressed": kind === "", onClick: () => setKind("") }, t("Bot")),
+        (0, import_react39.createElement)("button", { type: "button", "aria-pressed": kind === "supervisor", onClick: () => setKind("supervisor") }, t("Supervisor"))
+      ),
+      kind === "supervisor" ? (0, import_react39.createElement)("span", { className: "bt-note" }, t("Manages workspaces, dispatches lanes into them, and watches each one finish, so you do not have to.")) : null
+    ),
     (0, import_react39.createElement)(RunModeSwitch, { mode, setMode }),
     (0, import_react39.createElement)(
       "div",
@@ -40862,6 +41186,7 @@ function ContextMenu({ menu, roster, actions, useWork, leaving = false }) {
     setPlace({ left: Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(menu.y, viewBottom() - box.height - 8)) });
   }, [menu.x, menu.y, tick]);
   if (menu.kind === "agent" || menu.kind === "agent-session") return (0, import_react65.createElement)(AgentMenu, { menu, roster, actions, leaving });
+  if (menu.kind === "lane") return (0, import_react65.createElement)(LaneMenu, { menu, actions, leaving });
   if (menu.kind === "section" || menu.kind === "section-add") return (0, import_react65.createElement)(SectionMenu, { menu, roster, actions, leaving });
   const bot = roster.byId[menu.id];
   const room2 = roster.roomsById[menu.id];
@@ -41070,6 +41395,45 @@ function SectionMenu({ menu, roster, actions, leaving }) {
         void Promise.resolve(actions.deleteSection(sec.id)).catch((error) => actions.reportError(error, "menu"));
       }
     }, (0, import_react65.createElement)(TrashIcon), (0, import_react65.createElement)("span", { className: "bt-menu-label" }, t("Ungroup section")))
+  );
+}
+function LaneMenu({ menu, actions, leaving }) {
+  const ref = (0, import_react65.useRef)(null);
+  const trigger = (0, import_react65.useRef)(typeof document === "undefined" ? null : document.activeElement);
+  (0, import_react65.useEffect)(() => {
+    const onKey = (event) => {
+      stepMenuFocus(ref.current, event, trigger.current);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+  const [place, setPlace] = (0, import_react65.useState)({ left: menu.x, top: menu.y });
+  const tick = useViewport();
+  (0, import_react65.useLayoutEffect)(() => {
+    const box = ref.current?.getBoundingClientRect();
+    if (!box) return;
+    setPlace({ left: Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(menu.y, viewBottom() - box.height - 8)) });
+  }, [menu.x, menu.y, tick]);
+  return (0, import_react65.createElement)(
+    "div",
+    { ref, className: "bt-menu", role: "menu", "aria-label": t("Lane actions"), style: place, "data-leaving": leaving || void 0 },
+    (0, import_react65.createElement)("button", {
+      type: "button",
+      role: "menuitem",
+      onClick: () => {
+        actions.closeMenu();
+        void Promise.resolve(actions.stopLane(menu.id)).catch((error) => actions.reportError(error, "lane"));
+      }
+    }, (0, import_react65.createElement)(StopIcon), (0, import_react65.createElement)("span", { className: "bt-menu-label" }, t("Stop lane"))),
+    (0, import_react65.createElement)("button", {
+      type: "button",
+      role: "menuitem",
+      className: "bt-danger",
+      onClick: () => {
+        actions.closeMenu();
+        void Promise.resolve(actions.releaseLane(menu.id)).catch((error) => actions.reportError(error, "lane"));
+      }
+    }, (0, import_react65.createElement)(SignOutIcon), (0, import_react65.createElement)("span", { className: "bt-menu-label" }, t("Release lane")))
   );
 }
 function AgentMenu({ menu, roster, actions, leaving }) {
@@ -42162,7 +42526,7 @@ var GlobeIcon2 = icon(["M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14z", "M3 10h14", "M10 
 var BackIcon = icon(["M12.5 4.5L7 10l5.5 5.5"]);
 var ForwardIcon = icon(["M7.5 4.5L13 10l-5.5 5.5"]);
 var ReloadIcon = icon(["M15.5 10a5.5 5.5 0 1 1-1.6-3.9", "M15.5 3.5v3.5H12"]);
-var StopIcon = icon(["M5.5 5.5l9 9M14.5 5.5l-9 9"]);
+var StopIcon2 = icon(["M5.5 5.5l9 9M14.5 5.5l-9 9"]);
 var CloseIcon3 = icon(["M5.5 5.5l9 9M14.5 5.5l-9 9"]);
 var PlusTabIcon = icon(["M10 5v10M5 10h10"]);
 var LockIcon2 = icon(["M6.5 9V7a3.5 3.5 0 0 1 7 0v2", "M5.5 9h9v7h-9z"]);
@@ -42564,7 +42928,7 @@ function BrowserView({ bot, tabId, leaving, landed, actions, useBrowserPages, ho
         "aria-label": page.loading ? t("Stop") : t("Reload"),
         title: page.loading ? t("Stop") : t("Reload"),
         onClick: () => actions.browserCommand(tabId, page.loading ? "stop" : "reload")
-      }, (0, import_react69.createElement)(page.loading ? StopIcon : ReloadIcon)),
+      }, (0, import_react69.createElement)(page.loading ? StopIcon2 : ReloadIcon)),
       (0, import_react69.createElement)(
         "form",
         { className: "bt-browser-address", onSubmit: go, "data-editing": editing || void 0 },
@@ -45457,7 +45821,7 @@ function apply(ctx) {
   const pendingAdopt = /* @__PURE__ */ new Map();
   const pendingAgentSession = /* @__PURE__ */ new Map();
   const agentNewInFlight = /* @__PURE__ */ new Map();
-  const isAgentSessionId = (id) => isAgentSession(roster.getSnapshot(), agentSessionCache, id) || pendingAdopt.has(id);
+  const isAgentSessionId = (id) => isAgentSession(roster.getSnapshot(), agentSessionCache, id) || pendingAdopt.has(id) || roster.getSnapshot().lanesById?.[id] !== void 0;
   const agentOfSession = (id) => roster.getSnapshot().agentOf[id] ?? pendingAdopt.get(id);
   const workspaces = ctx.get("workspaces");
   const workspaceOf = (sessionId) => {
@@ -45568,7 +45932,7 @@ function apply(ctx) {
     if (Object.keys(seenAt).length === 0) leaveVisits([...value.bots, ...value.rooms].map((entry) => entry.id));
     roster.set(indexRoster(value));
     try {
-      const ids = (value.agents ?? []).flatMap((agent) => agent.sessions ?? []);
+      const ids = (value.agents ?? []).flatMap((agent) => agent.sessions ?? []).concat((value.lanes ?? []).map((lane) => lane.id));
       localStorage.setItem(STORAGE.agentSessions, JSON.stringify(ids));
       agentSessionCache = new Set(ids);
     } catch {
@@ -46003,6 +46367,17 @@ function apply(ctx) {
     renameAgentSession: (agentId, sessionId, title) => after(call("agent-rename", { agentId, sessionId, title })),
     beginAgentRename: (sessionId) => ui2.set((state) => ({ ...state, renameAgent: sessionId })),
     endAgentRename: () => ui2.set((state) => state.renameAgent ? { ...state, renameAgent: null } : state),
+    // Lanes: the Supervisor supervises, the user can stop one or take it back out of
+    // supervision. A released lane is a plain Session again, so the main view must
+    // leave it before the roster lands and the Bot skin would claim it.
+    stopLane: (id) => after(call("lane-stop", { laneId: id })),
+    releaseLane: async (id) => {
+      const list = ctx.sessions.list.getSnapshot();
+      const main = Object.values(list.byId ?? {}).find((session) => (session?.retainedBy?.mainView ?? 0) > 0)?.id;
+      await after(call("lane-release", { laneId: id }));
+      if (main === id && roster.getSnapshot().mainBotId) actions.openSession(roster.getSnapshot().mainBotId);
+      await pull();
+    },
     // Removing the Agent archives every Session it owns; one of them may fill the
     // main view, and it must not stay there wearing the Bot surface afterwards.
     removeAgent: async (agentId) => {

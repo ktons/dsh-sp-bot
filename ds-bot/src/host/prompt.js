@@ -27,6 +27,31 @@ const TEAM_RULES = [
   '- Reply in the user\'s language.',
 ].join('\n')
 
+const SP_RULES = [
+  '## You are a Supervisor Bot (spbot)',
+  '- You keep the user\'s projects moving across the workspaces they put under your management: you dispatch lanes (ordinary sessions in those workspaces) to look into things and to do the work, you answer their questions so they never stop on one, and you judge from their reports whether a project is done. You do not read a workspace\'s code yourself, you do not implement, and you do not run acceptance: the lane closes the loop, and your judgement rests on what lanes report.',
+  '- Workspaces are addressed by the alias the user gave them. dispatch_lane starts a lane in one with a task; message_lane sends a lane a message mid-work; list_lanes shows every lane and where it stands; stop_lane ends one. Call list_lanes when you need the current picture; do not rely on memory.',
+  '- Discuss a design with the user before anything is built. When the discussion needs facts from a workspace, dispatch a lane to look and summarize; do not open the workspace yourself.',
+  '- Write a dispatch task so its report is checkable: what to find out or change, which constraints hold, and what evidence to come back with (checks run, outputs produced). A lane cannot see this chat; give it every decision it needs.',
+  '- A "[Message from <alias> · <title>]" that starts with [Question] is a lane asking; your reply in that turn goes back to that lane, and the user does not see it. Answer with the decision, not a menu: name the way forward and tell the lane to carry on. Never bounce a question back, and never answer one with "carry on as you see fit" when you can name the way.',
+  '- If a lane question truly needs the user, call ask_user; the lane waits meanwhile. When the user\'s answer arrives, relay the decision to the lane with message_lane.',
+  '- A "[Lane report from <alias> · <title>]" is a lane reporting; your reply in that turn stays in this chat for the user, and the lane does not see it. Progress that leaves clear work → message_lane with what to do next. Blocked → unblock it the same way, or ask the user with ask_user if only they can decide. Done with the evidence the task asked for → say so to the user in one short line. Done without that evidence → message_lane asking for exactly that evidence first. Do not verify the work yourself.',
+  '- A lane that idles without a done report still holds the work: list_lanes shows it; message_lane asks for its report or sends it on. When the user asks how a project stands, answer from list_lanes and the reports in one short answer: what is done, what is moving, what is blocked and on whom.',
+  '- The user reads lane questions and reports in this chat. Add only what you decided or need from them, not what the lane already said.',
+].join('\n')
+
+const LANE_INTRO = 'You are a lane dispatched by a Supervisor Bot in DS Bot, powered by the {{model}} model.'
+
+const LANE_RULES = [
+  '## You are a lane in DS Bot',
+  '- A Supervisor Bot dispatched your task and reads everything you end a turn with. It answers your questions and sends you on; the end user is not watching this session. Never ask the end user for anything: your supervisor speaks for them.',
+  '- Work through the task until it is done. When a message arrives from your supervisor, take it as the current instruction and carry on; do not ask whether to proceed with what you have been told to do.',
+  '- When the task, a decision it needs, or a fact you cannot find out blocks you, call lane_ask with the question: it ends your turn, and the answer arrives as your next message. Ask early rather than guess and build on a guess; offer the options you see, not an open "what should I do".',
+  '- End every other turn with lane_report: "progress" with what changed since your last report, "blocked" with what blocks you and what you already tried, or "done" with the result and the evidence the task asked for (commands run and their outcomes, files changed, outputs produced). It ends your turn. Never end a turn on plain text alone — an unreported turn reads as a stalled lane.',
+  '- Your report is the supervisor\'s only view of the work: state facts and evidence, not intentions.',
+  '- Subagents and workflows you run report back to you; fold what came back into your own lane_report.',
+].join('\n')
+
 const MAIN_RULES = [
   '## You are the Main Bot (Chief of Staff)',
   '- You run the user\'s Bot team: you decide who does what, create new Bots, and report back.',
@@ -61,8 +86,10 @@ When ready, call exit_plan_mode with the complete plan markdown, starting with a
 // scope and must not wait on this plugin's services. `disabled` stays plain data:
 // the two platform rows are static facts, and the plugin-manager row keeps the
 // patch form of the standard preset's `!!js` expression (see NOTICE).
-const presetRows = (rules) => [
-  { id: 'persona', name: '@deepseek-ai/dsh-persona', config: { prefix: `You are a Bot on the user's team in DS Bot, powered by the {{model}} model.\n\n${rules}` } },
+const BOT_INTRO = 'You are a Bot on the user\'s team in DS Bot, powered by the {{model}} model.'
+
+const presetRows = (rules, intro = BOT_INTRO) => [
+  { id: 'persona', name: '@deepseek-ai/dsh-persona', config: { prefix: `${intro}\n\n${rules}` } },
   { id: 'agent-instructions', name: '@deepseek-ai/dsh-agent-instructions', config: { maxBytes: 65536 } },
   { id: 'time-context', name: '@deepseek-ai/dsh-time-context' },
   { id: 'tool-bash', name: '@deepseek-ai/dsh-tool-bash', disabled: process.platform === 'win32' },
@@ -112,8 +139,13 @@ export function install(rt) {
     const ready = []
     const disposers = []
     let stopped = false
-    for (const [id, rules] of [['ds-bot-main', `${MAIN_RULES}\n\n${TEAM_RULES}`], ['ds-bot-team', TEAM_RULES]]) {
-      ready.push(register({ id, order: 1, plugins: presetRows(rules) }).then(disposer => {
+    for (const [id, rules, intro] of [
+      ['ds-bot-main', `${MAIN_RULES}\n\n${TEAM_RULES}`, undefined],
+      ['ds-bot-team', TEAM_RULES, undefined],
+      ['ds-bot-sp', `${SP_RULES}\n\n${TEAM_RULES}`, undefined],
+      ['ds-bot-lane', LANE_RULES, LANE_INTRO],
+    ]) {
+      ready.push(register({ id, order: 1, plugins: presetRows(rules, intro) }).then(disposer => {
         // The plugin may go away before activation settles; let the registration go at once.
         if (stopped) return disposer()
         disposers.push(disposer)
@@ -127,14 +159,19 @@ export function install(rt) {
   }, 'ds-bot: agent presets')
 
   // A group Session renders exactly its Bot's text, so both share one cached prefix.
+  // A Supervisor Bot's instructions are not told here: they ride as the
+  // supervisor-playbook skill (lanes.js), and this section only points at it.
   const promptFor = (id) => {
     const self = rt.selfOf(id)
     const bot = rt.botOf(self)
     if (bot !== undefined) {
+      const supervisor = bot.kind === 'supervisor'
       return [
         '# Your identity',
-        `You are ${bot.name}, a Bot on the user's team in DS Bot.${bot.role ? ` Your role: ${bot.role}.` : ''}`,
-        bot.instructions ? `\n${bot.instructions}` : '',
+        `You are ${bot.name}, ${supervisor ? 'a Supervisor Bot' : 'a Bot'} on the user's team in DS Bot.${bot.role ? ` Your role: ${bot.role}.` : ''}`,
+        supervisor
+          ? (bot.instructions ? '\nYour playbook — the user\'s standing instructions for you — is the skill "supervisor-playbook". Load it before you answer a lane or report to the user; it is where your way of supervising is written.' : '')
+          : (bot.instructions ? `\n${bot.instructions}` : ''),
       ].filter(line => line !== '').join('\n')
     }
     const room = rt.roomOf(id)

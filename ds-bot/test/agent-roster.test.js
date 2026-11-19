@@ -32,6 +32,16 @@ test('a roster without agents still answers the index reads', () => {
   assert.deepEqual(roster.agentOf, {})
 })
 
+// Lanes are plain Sessions a Supervisor watches; their id finds the lane record.
+test('indexRoster indexes lanes by Session id', () => {
+  const roster = indexRoster({ ...ROSTER_VALUE, lanes: [{ id: 'l1', spBotId: 'sp', title: 'refactor', status: 'working' }] })
+  assert.deepEqual(roster.lanes.map(lane => lane.id), ['l1'])
+  assert.equal(roster.lanesById.l1.title, 'refactor')
+  const empty = indexRoster({ ...ROSTER_VALUE, lanes: undefined })
+  assert.deepEqual(empty.lanes, [])
+  assert.deepEqual(empty.lanesById, {})
+})
+
 // The plain flag decides which groups mount: an Agent Session keeps the shell and
 // withdraws only the conversation replacements.
 test('isAgentSession follows the roster first, the cache before it is ready', () => {

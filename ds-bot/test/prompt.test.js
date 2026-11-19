@@ -8,6 +8,7 @@ function start() {
   const bots = new Map([
     ['main', { name: 'Chief' }],
     ['worker', { name: 'Dev', instructions: 'Check files.' }],
+    ['chief', { name: 'Foreman', kind: 'supervisor', instructions: 'Watch the lanes.' }],
   ])
   const registered = new Map()
   let disposed = 0
@@ -29,14 +30,14 @@ function start() {
 test('the team rules travel in the presets, not in the identity section', (t) => {
   const { ctx, prompt, registered } = start()
   t.after(() => ctx.dispose())
-  assert.deepEqual([...registered.keys()].sort(), ['ds-bot-main', 'ds-bot-team'])
+  assert.deepEqual([...registered.keys()].sort(), ['ds-bot-lane', 'ds-bot-main', 'ds-bot-sp', 'ds-bot-team'])
   const rules = [
     '- Only for a direct user request in your own chat that needs several steps: write one short sentence of normal reply text before your first tool call, and make that tool call in the same response. Never start such a task with tools alone or end it with a promise. On long tasks, give brief factual updates only at meaningful milestones, then keep working.',
     '- For "[Message from …]" or "[Reply from …]" messages, do not write plans or progress updates: use tools silently, then reply with the answer. Simple answers do not need progress messages.',
     '- In a group chat, the group sees what you write while you work, not only your final reply. For work that takes more than a quick look, start with one short sentence on what you will do, in the same response as your first tool call. After that, write only when you find something the group should know or finish a part of the work, in a sentence or two, not at every step. End with the result. Simple answers need no updates.',
     '- Reply in the user\'s language.',
   ]
-  for (const id of ['ds-bot-main', 'ds-bot-team']) {
+  for (const id of ['ds-bot-main', 'ds-bot-team', 'ds-bot-sp']) {
     const prefix = registered.get(id).plugins.find(row => row.id === 'persona').config.prefix
     for (const rule of rules) {
       assert.ok(prefix.split('\n').includes(rule))
@@ -46,8 +47,14 @@ test('the team rules travel in the presets, not in the identity section', (t) =>
   const main = registered.get('ds-bot-main').plugins.find(row => row.id === 'persona').config.prefix
   assert.match(main, /## You are the Main Bot \(Chief of Staff\)/)
   assert.ok(main.indexOf('## You are the Main Bot (Chief of Staff)') < main.indexOf('## How your Bot team works'))
+  const sp = registered.get('ds-bot-sp').plugins.find(row => row.id === 'persona').config.prefix
+  assert.match(sp, /## You are a Supervisor Bot \(spbot\)/)
+  assert.ok(sp.indexOf('## You are a Supervisor Bot (spbot)') < sp.indexOf('## How your Bot team works'))
+  const lane = registered.get('ds-bot-lane').plugins.find(row => row.id === 'persona').config.prefix
+  assert.match(lane, /## You are a lane in DS Bot/)
+  assert.match(lane, /You are a lane dispatched by a Supervisor Bot/)
   for (const id of ['main', 'worker']) {
-    assert.doesNotMatch(prompt(id), /How your Bot team works|Main Bot \(Chief of Staff\)/)
+    assert.doesNotMatch(prompt(id), /How your Bot team works|Main Bot \(Chief of Staff\)|Supervisor Bot \(spbot\)|You are a lane in DS Bot/)
   }
   // The preset rows mount only npm packages, never a service of this plugin: the
   // preset activates in the registry's own scope, before this plugin is up.
@@ -76,6 +83,12 @@ test('the identity section stays the Bot record alone, and the relay text is unc
   t.after(() => ctx.dispose())
   assert.equal(prompt('main'), '# Your identity\nYou are Chief, a Bot on the user\'s team in DS Bot.')
   assert.equal(prompt('worker'), '# Your identity\nYou are Dev, a Bot on the user\'s team in DS Bot.\n\nCheck files.')
+  // A Supervisor's instructions ride as the playbook skill; the section only points at it.
+  assert.equal(
+    prompt('chief'),
+    '# Your identity\nYou are Foreman, a Supervisor Bot on the user\'s team in DS Bot.\n\nYour playbook — the user\'s standing instructions for you — is the skill "supervisor-playbook". Load it before you answer a lane or report to the user; it is where your way of supervising is written.',
+  )
+  assert.doesNotMatch(prompt('chief'), /Watch the lanes\./)
   assert.match(prompt('room'), /end your turn with an empty reply/)
   assert.doesNotMatch(prompt('room'), /progress|milestone/)
   assert.equal(prompt('outside'), '')
@@ -85,7 +98,7 @@ test('dispose lets go of the preset registrations, also before activation settle
   {
     const { ctx, disposed: count } = start()
     await Promise.resolve()
-    assert.equal(count(), 2)
+    assert.equal(count(), 4)
     await ctx.dispose()
     assert.equal(count(), 0)
   }

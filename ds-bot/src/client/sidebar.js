@@ -12,6 +12,7 @@ import { reducedMotion } from './activity-row.js'
 import { Shimmer, workPhrase } from './cells.js'
 import { SPRING_GLIDE, SPRING_POP, SPRING_SHAPE, SPRING_TAP, stepMenuFocus, useLinger, useViewport, viewBottom } from './motion.js'
 import { hostText, t } from './i18n.js'
+import { folderName } from './folder-menu.js'
 import { clientErrors } from './diagnostics.js'
 import { showsDshRow } from './dsh-offer.js'
 import { quietly } from './diagnostics.js'
@@ -259,6 +260,87 @@ function AgentRow({ agent, actions, useSessions, useSessionStatus, useUi, wide, 
           key: session.id, session, agent, actions, index: index + 1,
           renaming: renaming === session.id,
         })))) : null)
+}
+
+// One lane under a managed workspace: a plain Session a Supervisor Bot watches. The
+// dot carries the lane's state; an approval waiting in the Session outranks it, since
+// both read as "this needs someone".
+const LANE_LABELS = { working: 'Working', asking: 'Asking', blocked: 'Blocked', idle: 'Idle', done: 'Done', stopped: 'Stopped' }
+
+function LaneRow({ lane, actions, useSessions, useSessionStatus, index }) {
+  const bits = useSessions(list => JSON.stringify({
+    running: list.byId[lane.id]?.running === true,
+    active: (list.byId[lane.id]?.retainedBy?.mainView ?? 0) > 0,
+  }))
+  const live = useSessionStatus(map => JSON.stringify({
+    running: map.get(lane.id)?.running === true,
+    approval: map.get(lane.id)?.pendingInteraction !== undefined,
+  }))
+  const session = useMemo(() => ({ ...JSON.parse(bits), ...JSON.parse(live) }), [bits, live])
+  const status = session.approval ? 'blocked' : lane.status
+  const label = session.approval ? t('Waiting for your approval') : t(LANE_LABELS[lane.status] ?? 'Idle')
+  return h('button', {
+    type: 'button', className: 'bt-agent-sub-row', 'aria-current': session.active ? 'page' : undefined,
+    'aria-label': `${lane.title}, ${label}`, style: { '--i': index },
+    title: lane.task && lane.task !== lane.title ? lane.task : undefined,
+    onClick: () => actions.openAgentSession(lane.id),
+    onContextMenu: (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      actions.openMenu({ kind: 'lane', id: lane.id, x: event.clientX, y: event.clientY })
+    },
+  },
+  h('span', { className: 'bt-lane-dot', 'data-status': status, 'data-run': session.running || undefined, 'aria-hidden': true }),
+  h('span', { className: 'bt-agent-sub-title' }, lane.title),
+  h('span', { className: 'bt-lane-status' }, label))
+}
+
+// The plain-Session area, extended to the Supervisors' workspaces: one block per
+// workspace that has lanes, the lanes under it, and a New lane row that opens the
+// Supervisor's chat — the dispatch itself stays the Supervisor's move. A lane whose
+// workspace was taken out of management stays visible under the folder's own name.
+export function laneGroupsOf(roster) {
+  const groups = []
+  for (const sp of roster.bots) {
+    if (sp.kind !== 'supervisor') continue
+    const rest = (roster.lanes ?? []).filter(lane => lane.spBotId === sp.id)
+    if (rest.length === 0) continue
+    const managed = new Map((sp.managed ?? []).map(ws => [ws.path, ws.alias]))
+    const seen = new Map()
+    const leftover = []
+    for (const lane of rest) {
+      const alias = managed.get(lane.workspacePath)
+      if (alias === undefined) { leftover.push(lane); continue }
+      if (!seen.has(alias)) { seen.set(alias, { sp, alias, path: lane.workspacePath, lanes: [] }); groups.push(seen.get(alias)) }
+      seen.get(alias).lanes.push(lane)
+    }
+    for (const lane of leftover) {
+      const key = `path:${lane.workspacePath}`
+      if (!seen.has(key)) { seen.set(key, { sp, alias: null, path: lane.workspacePath, lanes: [] }); groups.push(seen.get(key)) }
+      seen.get(key).lanes.push(lane)
+    }
+  }
+  for (const group of groups) group.lanes.sort((a, b) => b.createdAt - a.createdAt)
+  return groups
+}
+
+function LaneGroups({ roster, actions, useSessions, useSessionStatus }) {
+  const groups = useMemo(() => laneGroupsOf(roster), [roster])
+  if (groups.length === 0) return null
+  return h(Fragment, null, groups.map(group => h('div', { key: `${group.sp.id}:${group.alias ?? group.path}`, className: 'bt-lanegroup' },
+    h('div', { className: 'bt-lanegroup-head', title: group.path },
+      h('span', { className: 'bt-lanegroup-mark', 'aria-hidden': true }, h(FolderIcon)),
+      h('span', { className: 'bt-lanegroup-name' }, group.alias ?? folderName(group.path)),
+      h('span', { className: 'bt-lanegroup-sp' }, group.sp.name),
+      h('span', { className: 'bt-lanegroup-count' }, group.lanes.length)),
+    h('div', { className: 'bt-agent-sub', 'data-open': 'true' },
+      h('div', { className: 'bt-agent-sub-in' },
+        group.lanes.map((lane, index) => h(LaneRow, { key: lane.id, lane, actions, useSessions, useSessionStatus, index })),
+        h('button', {
+          type: 'button', className: 'bt-agent-sub-row bt-agent-new', style: { '--i': group.lanes.length },
+          title: t('Ask {name} to dispatch a lane here', { name: group.sp.name }),
+          onClick: () => actions.openSession(group.sp.id),
+        }, h(PlusIcon), h('span', { className: 'bt-agent-sub-title' }, t('New lane…'))))))))
 }
 
 function renderSidebarEntry(entry, rowProps, markedUnread, onDragStart) {
@@ -842,7 +924,8 @@ export function TeamSidebar(props) {
         onDragStart,
         onDragOverSec,
         onDropSec,
-      }))),
+      })),
+      wideContent ? h(LaneGroups, { roster, actions, useSessions, useSessionStatus: props.useSessionStatus }) : null),
     foot)
   return h(Fragment, null,
     h(TitleToggle, { hidden: mode === 'hidden', onToggle }),
@@ -1338,6 +1421,21 @@ export const SIDEBAR_CSS = `
 .bt-agent-sub[data-open] .bt-agent-sub-row{animation:bt-agent-row-in .24s ease both;animation-delay:calc(var(--i, 0)*30ms)}
 @keyframes bt-agent-row-in{from{opacity:0;filter:var(--bt-fx-blur-4,blur(4px))}to{opacity:1;filter:none}}
 @media (prefers-reduced-motion:reduce){.bt-agent-sub{transition:none}.bt-agent-sub .bt-agent-sub-row{animation:none}}
+/* Supervisors' managed workspaces and their lanes, under the plain-Session rows. */
+.bt-lanegroup{margin-top:4px}
+.bt-lanegroup-head{display:flex;align-items:center;gap:8px;padding:10px 10px 4px 8px;font-size:12px;line-height:16px}
+.bt-lanegroup-mark{display:inline-flex;flex:none;color:var(--bt-ink-3)}
+.bt-lanegroup-mark svg{width:13px;height:13px}
+.bt-lanegroup-name{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--bt-ink)}
+.bt-lanegroup-sp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3)}
+.bt-lanegroup-count{flex:none;color:var(--bt-ink-3)}
+.bt-lane-dot{flex:none;width:7px;height:7px;border-radius:999px;background:var(--bt-ink-3)}
+.bt-lane-dot[data-status=working]{background:var(--bt-green)}
+.bt-lane-dot[data-status=done]{background:var(--bt-green)}
+.bt-lane-dot[data-status=asking],.bt-lane-dot[data-status=blocked]{background:var(--bt-warn)}
+.bt-lane-dot[data-run]{animation:bt-agent-pulse 1.4s ease-in-out infinite}
+.bt-lane-status{flex:none;font-size:11px;line-height:16px;color:var(--bt-ink-3)}
+@media (prefers-reduced-motion:reduce){.bt-lane-dot[data-run]{animation:none}}
 
 /* Sidebar sections: collapsible header with a 3D character pile and live status when
    folded, active conversation peek, drag-and-drop highlight, and 88px rail cluster. */

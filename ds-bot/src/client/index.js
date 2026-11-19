@@ -114,6 +114,7 @@ export function apply(ctx) {
   const pendingAgentSession = new Map()
   const agentNewInFlight = new Map()
   const isAgentSessionId = id => isAgentSession(roster.getSnapshot(), agentSessionCache, id) || pendingAdopt.has(id)
+    || roster.getSnapshot().lanesById?.[id] !== undefined
   const agentOfSession = id => roster.getSnapshot().agentOf[id] ?? pendingAdopt.get(id)
   // The workspace a Session lives in, for follow-up creates and switch detection.
   const workspaces = ctx.get('workspaces')
@@ -238,7 +239,7 @@ export function apply(ctx) {
     if (Object.keys(seenAt).length === 0) leaveVisits([...value.bots, ...value.rooms].map(entry => entry.id))
     roster.set(indexRoster(value))
     try {
-      const ids = (value.agents ?? []).flatMap(agent => agent.sessions ?? [])
+      const ids = (value.agents ?? []).flatMap(agent => agent.sessions ?? []).concat((value.lanes ?? []).map(lane => lane.id))
       localStorage.setItem(STORAGE.agentSessions, JSON.stringify(ids))
       agentSessionCache = new Set(ids)
     } catch { /* storage unavailable */ }
@@ -663,6 +664,17 @@ export function apply(ctx) {
     renameAgentSession: (agentId, sessionId, title) => after(call('agent-rename', { agentId, sessionId, title })),
     beginAgentRename: sessionId => ui.set(state => ({ ...state, renameAgent: sessionId })),
     endAgentRename: () => ui.set(state => (state.renameAgent ? { ...state, renameAgent: null } : state)),
+    // Lanes: the Supervisor supervises, the user can stop one or take it back out of
+    // supervision. A released lane is a plain Session again, so the main view must
+    // leave it before the roster lands and the Bot skin would claim it.
+    stopLane: id => after(call('lane-stop', { laneId: id })),
+    releaseLane: async (id) => {
+      const list = ctx.sessions.list.getSnapshot()
+      const main = Object.values(list.byId ?? {}).find(session => (session?.retainedBy?.mainView ?? 0) > 0)?.id
+      await after(call('lane-release', { laneId: id }))
+      if (main === id && roster.getSnapshot().mainBotId) actions.openSession(roster.getSnapshot().mainBotId)
+      await pull()
+    },
     // Removing the Agent archives every Session it owns; one of them may fill the
     // main view, and it must not stay there wearing the Bot surface afterwards.
     removeAgent: async (agentId) => {

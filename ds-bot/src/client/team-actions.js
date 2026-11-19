@@ -151,6 +151,9 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     folderList: path => call('folder-list', { path: path ?? '' }),
     setTeamWorkspace: path => after(call('team-workspace', { path })),
     deleteBot: id => after(call('delete-bot', { id })),
+    // A Supervisor Bot's managed workspaces; lanes hang off the sidebar actions instead.
+    spWorkspaceAdd: (botId, path, alias) => after(call('sp-workspace-add', { botId, path, alias })),
+    spWorkspaceRemove: (botId, path) => after(call('sp-workspace-remove', { botId, workspace: path })),
     releasePrivate: id => after(call('private-release', { id })),
     duplicateBot: id => after(call('duplicate-bot', { id })),
     setPrefs: prefs => after(call('set-prefs', prefs)),
