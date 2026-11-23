@@ -1,6 +1,8 @@
 // QQ open platform, rebuilt on the official @tencent-connect/qqbot-nodejs
 // SDK (MIT, see NOTICE) following dsh-im's delivery model. The SDK owns the
-// gateway (heartbeat, resume, reconnect) and the token lifecycle; sends keep
+// gateway (heartbeat, resume, reconnect) and the token lifecycle — except that
+// it never checks a heartbeat ack, so the watchdog below closes a gateway that
+// stopped answering, which the SDK's reconnect then replaces. Sends keep
 // ds-bot's contract: the reply is converted to the QQ markdown subset,
 // chunked, sent as msg_type=2 against the last inbound msg_id with a
 // climbing msg_seq, and a chunk the platform refuses for markdown
@@ -14,6 +16,17 @@ const TEXT_LIMIT = 2000
 // GROUP_AND_C2C covers C2C_MESSAGE_CREATE and GROUP_AT_MESSAGE_CREATE.
 const INTENTS = 1 << 25
 const MARKDOWN_REJECTION_BIZ_CODE = 40_034_090
+// The SDK sends heartbeats but never checks the gateway's acks, so a connection
+// QQ stopped answering — after the computer slept or a NAT mapping quietly
+// expired — stays 'ready' forever and every later message is lost. The watchdog
+// watches the socket the SDK actually uses and closes it once no frame arrives
+// in a few heartbeat periods, which lets the SDK's own reconnect take over; if
+// that socket stays gone the SDK has given up, and a fresh connection replaces it.
+const WATCHDOG_TICK_MS = 10_000
+const WATCHDOG_RESET_MS = 5 * 60_000
+const WATCHDOG_MIN_SILENCE_MS = 60_000
+const WATCHDOG_MAX_SILENCE_MS = 120_000
+const WATCHDOG_DEFAULT_BEAT_MS = 45_000
 
 const loggerFor = env => ({
   info: (...args) => env.log?.info?.('ds-bot im qq: %s', args.join(' ')),
@@ -78,18 +91,29 @@ export default {
     // per id — outside the reply window the platform refuses (permanent).
     const lastMsgId = new Map()
     const msgSeq = new Map()
+    // Watchdog tunables ride on the platform config; the test bench shortens them.
+    const tick = Math.max(Number(env.config?.tick) || WATCHDOG_TICK_MS, 10)
+    const resetAfter = Math.max(Number(env.config?.reset) || WATCHDOG_RESET_MS, tick * 2)
+    let generation = 0
+    let watchdogTimer
+    let everSawSocket = false
+    let lastSocketAt = 0
+    let watchedSocket
+    let watchedSeenAt = 0
+    let watchedBeatMs = 0
 
-    const wire = (bot) => {
-      bot.on('ready', () => { if (!stopped) { hasConnected = true; handlers.onStatus({ state: 'ready' }) } })
-      bot.on('resumed', () => { if (!stopped) { hasConnected = true; handlers.onStatus({ state: 'ready' }) } })
+    const wire = (bot, myGeneration) => {
+      const alive = () => !stopped && myGeneration === generation
+      bot.on('ready', () => { if (alive()) { hasConnected = true; handlers.onStatus({ state: 'ready' }) } })
+      bot.on('resumed', () => { if (alive()) { hasConnected = true; handlers.onStatus({ state: 'ready' }) } })
       bot.on('error', (error) => {
-        if (stopped) return
+        if (!alive()) return
         const message = String(error?.message ?? error)
         if (!hasConnected) startFailure = new Error(message)
         else handlers.onStatus({ state: 'retrying', error: message })
       })
       bot.on('message', async (_ctx, msg) => {
-        if (stopped) return
+        if (!alive()) return
         const direct = msg.kind === 'c2c'
         const key = String(direct ? msg.senderId : msg.groupOpenid ?? '')
         if (key === '') return
@@ -105,6 +129,35 @@ export default {
     }
 
     let bot
+    // A frame from the socket — heartbeat ack, dispatch, anything — proves the
+    // link answers. Stale sockets from replaced SDK instances must not refresh it.
+    const watch = () => {
+      const socket = bot?.gateway?.currentWs
+      if (socket === undefined || socket === null || socket === watchedSocket) return
+      watchedSocket = socket
+      everSawSocket = true
+      watchedSeenAt = Date.now()
+      socket.on?.('message', (data) => {
+        if (watchedSocket !== socket) return
+        watchedSeenAt = Date.now()
+        try {
+          const frame = JSON.parse(String(data))
+          if (frame?.op === 10 && Number(frame?.d?.heartbeat_interval) > 0) watchedBeatMs = Number(frame.d.heartbeat_interval)
+        } catch { /* a frame we cannot parse still proves liveness */ }
+      })
+    }
+    const silenceLimit = () => {
+      const fixed = Number(env.config?.silent)
+      if (Number.isFinite(fixed) && fixed > 0) return fixed
+      const beat = watchedBeatMs > 0 ? watchedBeatMs : WATCHDOG_DEFAULT_BEAT_MS
+      return Math.min(Math.max(beat * 2.5, WATCHDOG_MIN_SILENCE_MS), WATCHDOG_MAX_SILENCE_MS)
+    }
+    const rebuild = () => {
+      if (stopped) return
+      env.log?.warn?.('ds-bot im qq: gateway had no socket for %dms — starting a fresh connection', Date.now() - lastSocketAt)
+      void startAttempt(0)
+    }
+
     handlers.onStatus({ state: 'connecting' })
     // A refused credential (4xx token or gateway answer) is terminal; anything
     // else — including a start that ran ahead of the network — retries with a
@@ -113,12 +166,18 @@ export default {
     // the previous one dead.
     const startAttempt = async (attempt) => {
       if (stopped) return
+      const myGeneration = ++generation
+      const previous = bot
       bot = botFor(fields, env)
-      wire(bot)
+      lastSocketAt = Date.now()
+      watchedSocket = undefined
+      watchedBeatMs = 0
+      previous?.stop()
+      wire(bot, myGeneration)
       try {
         await bot.start()
       } catch (error) {
-        if (stopped) return
+        if (stopped || myGeneration !== generation) return
         const failure = startFailure ?? error
         const message = String(failure?.message ?? failure)
         if (startErrorPermanent(failure)) {
@@ -127,11 +186,32 @@ export default {
         }
         handlers.onStatus({ state: 'retrying', error: message })
         clearTimeout(retryTimer)
-        retryTimer = setTimeout(() => { void startAttempt(attempt + 1) }, retryDelay(attempt))
+        retryTimer = setTimeout(() => {
+          if (stopped || myGeneration !== generation) return
+          void startAttempt(attempt + 1)
+        }, retryDelay(attempt))
         retryTimer.unref?.()
       }
     }
     void startAttempt(0)
+    watchdogTimer = setInterval(() => {
+      if (stopped) return
+      watch()
+      const socket = bot?.gateway?.currentWs
+      if (socket === undefined || socket === null) {
+        // A gateway the SDK rebuilt itself leaves no gap long enough to get here;
+        // a gap this long means its reconnect gave up (or it hangs pre-open).
+        if (everSawSocket && Date.now() - lastSocketAt > resetAfter) rebuild()
+        return
+      }
+      lastSocketAt = Date.now()
+      if (socket.readyState !== 1) return
+      if (Date.now() - watchedSeenAt <= silenceLimit()) return
+      env.log?.warn?.('ds-bot im qq: no gateway frame for %dms — closing a dead websocket so it reconnects', Date.now() - watchedSeenAt)
+      handlers.onStatus({ state: 'retrying', error: 'QQ gateway stopped answering; reconnecting' })
+      socket.terminate()
+    }, tick)
+    watchdogTimer.unref?.()
 
     const replyOf = (chat) => {
       const msgId = lastMsgId.get(chat.key)
@@ -168,6 +248,7 @@ export default {
       stop: () => {
         stopped = true
         clearTimeout(retryTimer)
+        clearInterval(watchdogTimer)
         bot?.stop()
       },
     }

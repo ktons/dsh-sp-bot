@@ -3,6 +3,21 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { test } from 'node:test'
 import qq from '../src/host/im/platforms/qq.js'
 
+// The gateway socket the adapter's watchdog reaches into: the events it listens
+// for, the state it reads. Tests drive frames and read terminations on it.
+class FakeSocket {
+  constructor() {
+    this.handlers = {}
+    this.readyState = 1
+    this.terminated = 0
+  }
+
+  on(event, fn) { (this.handlers[event] ??= []).push(fn) }
+  emit(event, ...args) { for (const fn of this.handlers[event] ?? []) fn(...args) }
+  frame(payload) { this.emit('message', JSON.stringify(payload)) }
+  terminate() { this.terminated += 1; this.readyState = 3 }
+}
+
 // A fake @tencent-connect/qqbot-nodejs surface: the events the adapter wires,
 // the send/api calls it makes. Static queues drive per-instance behavior.
 class FakeQQBot {
@@ -16,6 +31,8 @@ class FakeQQBot {
     this.sent = []
     this.stopped = 0
     this.starts = 0
+    this.socket = new FakeSocket()
+    this.gateway = { currentWs: this.socket }
     FakeQQBot.instances.push(this)
     this.api = { get: async path => path === '/users/@me' ? { username: 'qqbot' } : {} }
   }
@@ -37,7 +54,7 @@ class FakeQQBot {
     return { id: `out_${this.sent.length}` }
   }
 
-  stop() { this.stopped += 1 }
+  stop() { this.stopped += 1; this.gateway = null }
 }
 
 const instance = () => FakeQQBot.instances.at(-1)
@@ -161,4 +178,49 @@ test('a refused credential is terminal', async () => {
     assert.deepEqual(statuses, [{ state: 'connecting' }, { state: 'error', error: 'invalid app secret' }])
     assert.equal(FakeQQBot.instances.length, 1)
   } finally { handle.stop() }
+})
+
+test('the watchdog closes a gateway that stopped answering frames', async () => {
+  const s = await connect({ config: { qqBot: FakeQQBot, tick: 20, silent: 60 } })
+  try {
+    await delay(300)
+    assert.equal(instance().socket.terminated, 1)
+    assert.deepEqual(s.statuses.slice(-1), [{ state: 'retrying', error: 'QQ gateway stopped answering; reconnecting' }])
+    // The SDK reconnects inside its instance: a fresh socket answers, RESUMED follows.
+    instance().socket = new FakeSocket()
+    instance().gateway.currentWs = instance().socket
+    await instance().emit('resumed')
+    assert.deepEqual(s.statuses.slice(-1), [{ state: 'ready' }])
+    const until = Date.now() + 100
+    while (Date.now() < until) {
+      instance().socket.frame({ op: 11, d: null })
+      await delay(10)
+    }
+    assert.equal(instance().socket.terminated, 0)
+  } finally { s.handle.stop() }
+})
+
+test('the watchdog leaves a gateway that keeps answering alone', async () => {
+  const s = await connect({ config: { qqBot: FakeQQBot, tick: 20, silent: 60 } })
+  try {
+    const until = Date.now() + 300
+    while (Date.now() < until) {
+      instance().socket.frame({ op: 11, d: null })
+      await delay(10)
+    }
+    assert.equal(instance().socket.terminated, 0)
+    assert.deepEqual(s.statuses.slice(-1), [{ state: 'ready' }])
+  } finally { s.handle.stop() }
+})
+
+test('a gateway the SDK gave up on gets a fresh connection', async () => {
+  const s = await connect({ config: { qqBot: FakeQQBot, tick: 20, reset: 100 } })
+  try {
+    // Reconnect exhaustion leaves the SDK instance alive with no socket at all.
+    instance().gateway.currentWs = null
+    await delay(400)
+    assert.equal(FakeQQBot.instances.length, 2)
+    assert.equal(FakeQQBot.instances[0].stopped, 1)
+    assert.deepEqual(s.statuses.slice(-1), [{ state: 'ready' }])
+  } finally { s.handle.stop() }
 })
