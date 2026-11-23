@@ -711,7 +711,7 @@ test('reply origin: a peer Bot message and a scheduled task do not reach IM', as
   const s = await start()
   t.after(s.stop)
   await pairedConn(s)
-  for (const source of [{ kind: 'peer', from: 'b' }, { kind: 'schedule', taskId: 't1' }]) {
+  for (const source of [{ kind: 'bot', from: 'b' }, { kind: 'schedule', taskId: 't1' }]) {
     s.emitEvent('a', 'user/message', { source, content: [{ type: 'text', text: 'work for you' }] })
     s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'internal reply' }] } })
     await s.flush()
@@ -725,10 +725,46 @@ test('reply origin: another source in the same turn withdraws the IM origin', as
   await pairedConn(s)
   await dm(s, 'u1', 'hi')
   s.imTurn('a')
-  s.emitEvent('a', 'user/message', { source: { kind: 'peer', from: 'b' }, content: [{ type: 'text', text: 'also this' }] })
+  s.emitEvent('a', 'user/message', { source: { kind: 'bot', from: 'b' }, content: [{ type: 'text', text: 'also this' }] })
   s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'reply' }] } })
   await s.flush()
   assert.equal(s.fake.sent.length, 0, 'a mixed turn sends nothing')
+})
+
+test('reply origin: mid-turn housekeeping keeps the turn answering its chat', async (t) => {
+  const s = await start()
+  t.after(s.stop)
+  await pairedConn(s)
+  // A long turn re-samples the clock and refreshes runtime context while it runs;
+  // none of that is another chat taking over, so the outputs after it keep going out.
+  await dm(s, 'u1', 'long task')
+  s.imTurn('a')
+  s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'progress one' }] } })
+  s.emitEvent('a', 'user/message', { source: { kind: 'time-context' }, content: [{ type: 'text', text: 'Time sampled while preparing turn 3, step 21' }] })
+  s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'progress two' }] } })
+  s.emitEvent('a', 'user/message', { source: { kind: 'ds-bot-memory-update' }, content: [{ type: 'text', text: '## Memory update' }] })
+  s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'progress three' }] } })
+  await s.flush()
+  assert.deepEqual(s.fake.sent.map(entry => entry.text), ['progress one', 'progress two', 'progress three'])
+  assert.deepEqual(s.fake.sent.map(entry => entry.chat.key), ['dm-u1', 'dm-u1', 'dm-u1'])
+})
+
+test('reply origin: housekeeping opening the next turn keeps the settle claim', async (t) => {
+  const s = await start()
+  t.after(s.stop)
+  await pairedConn(s)
+  await dm(s, 'u1', 'run the deep task')
+  s.imTurn('a')
+  s.emitEvent('a', 'turn/end', {})
+  // The runtime context arrives before the settlement itself; the summary after
+  // it is still the reply to the chat that asked.
+  s.emitEvent('a', 'turn/start', { turn: 2 })
+  s.emitEvent('a', 'user/message', { source: { kind: 'runtime-context' }, content: [{ type: 'text', text: 'Current runtime context.' }] })
+  s.emitEvent('a', 'user/message', { source: { kind: 'subagent-settled', senderSessionId: 'child-1' }, content: [{ type: 'text', text: 'child output' }] })
+  s.emitEvent('a', 'assistant/message', { message: { content: [{ type: 'text', text: 'summary after settle' }] } })
+  await s.flush()
+  assert.deepEqual(s.fake.sent.map(entry => entry.text), ['summary after settle'])
+  assert.deepEqual(s.fake.sent.map(entry => entry.chat.key), ['dm-u1'])
 })
 
 test('reply origin: a subagent settling inside the turn keeps the reply going out', async (t) => {
