@@ -1465,9 +1465,19 @@ export function install(rt) {
       // A subagent settling or reporting progress is the same turn carrying on inside,
       // wherever it was asked: it never decides where the turn's replies belong.
       const internal = source?.kind === 'subagent-settled' || source?.kind === 'agent-message'
+      // A member's late result relayed into the group's own Session is that work going
+      // on, not a rival chat; the group's output still answers the chat that asked.
+      const relay = source?.kind === SOURCE_KIND && source.role === 'post'
+      // The sources that speak for another chat: typed in the web or phone app, a
+      // scheduled task, or a peer Bot's line. A long turn also receives the runtime's
+      // own housekeeping along the way — time and runtime context, skill catalogs,
+      // memory updates — and that decides nothing: cutting the chat off there made
+      // every output after the mid-turn clock sample silently miss the chat.
+      const rival = !internal && !relay && (source?.kind === 'user' || source?.kind === 'web'
+        || source?.kind === REPLY_KIND || source?.kind === 'schedule' || source?.kind === SOURCE_KIND)
       // A late member result or part-switch handoff continues the work the chat asked for;
-      // any other first message starts a fresh turn, which clears the previous turn's origin.
-      if (pendingReset.delete(session.id) && !(typeof imOrigin === 'string' || internal || (source?.kind === SOURCE_KIND && source.role === 'post'))) resetOrigin(session.id)
+      // a rival first message starts a fresh turn, which clears the previous turn's origin.
+      if (pendingReset.delete(session.id) && rival) resetOrigin(session.id)
       if (typeof imOrigin === 'string') {
         const resumed = resumedOrigins.get(imOrigin)
         resumedOrigins.delete(imOrigin)
@@ -1481,20 +1491,12 @@ export function install(rt) {
         requests.delete(rpcId)
         if (asked === undefined) dropOrigin(session.id)
         else claimOrigin(session.id, asked.connId, asked.chatKey, asked.senderId, asked.binding)
-      } else if (source?.kind === REPLY_KIND) {
-        // Web and phone answers carry no registered IM request.
-        dropOrigin(session.id)
-      } else if (internal) {
-        // A subagent's result or progress note joins the turn the chat asked for; without
-        // this the settlement used to withdraw the origin and the reply after it was lost.
-      } else if (source?.kind === SOURCE_KIND && source.role === 'post') {
-        // A member's late result relayed into the group's own Session. The group's work
-        // is still the answer to the chat that asked, wherever the member runs.
-      } else {
+      } else if (rival) {
         // A message from the Web UI, a peer Bot or a scheduled task: this turn is not an
         // IM chat's to answer, even when an earlier turn of this Session was.
         dropOrigin(session.id)
       }
+      // Housekeeping and settlements keep the origin: the turn carries on for the chat.
     }
     if (event.type === 'turn/end') {
       // A group's own Session ends its relay turn at once while its members keep
